@@ -1,0 +1,53 @@
+name: Validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, 'feature/**']
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose
+        run: docker compose -f docker-compose.test.yml config
+      - name: Run Laravel tests
+        run: docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from backend-test
+      - name: Cleanup
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v --remove-orphans
+
+  frontend:
+    name: Frontend lint, unit and E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose
+        run: docker compose -f docker-compose.frontend-test.yml config
+      - name: Run frontend checks
+        run: docker compose -f docker-compose.frontend-test.yml run --rm frontend-test
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          if-no-files-found: ignore
+      - name: Cleanup
+        if: always()
+        run: docker compose -f docker-compose.frontend-test.yml down -v --remove-orphans
+
+  production:
+    name: Production image build
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production images
+        run: docker compose -f docker-compose.yml build --pull
