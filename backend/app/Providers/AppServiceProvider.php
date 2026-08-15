@@ -2,16 +2,18 @@
 
 namespace App\Providers;
 
+use App\Http\Responses\PasskeyLoginResponse;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Passkeys\Contracts\PasskeyLoginResponse as PasskeyLoginResponseContract;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Application service bindings will be added here as the starter grows.
+        $this->app->singleton(PasskeyLoginResponseContract::class, PasskeyLoginResponse::class);
     }
 
     public function boot(): void
