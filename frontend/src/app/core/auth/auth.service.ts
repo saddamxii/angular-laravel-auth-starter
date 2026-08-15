@@ -15,13 +15,21 @@ export class AuthService {
   readonly isAuthenticated = computed(() => this.currentUser() !== null && this.accessToken() !== null);
 
   register(payload: RegisterRequest): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/register`, payload);
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/register`, payload, { withCredentials: true });
   }
 
   login(payload: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/login`, payload, { withCredentials: true }).pipe(
       tap((response) => this.applyAuthentication(response)),
     );
+  }
+
+  forgotPassword(payload: { email: string }): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/password/forgot`, payload, { withCredentials: true });
+  }
+
+  resetPassword(payload: { token: string; email: string; password: string; password_confirmation: string }): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/password/reset`, payload, { withCredentials: true });
   }
 
   logout(): Observable<void> {
@@ -32,9 +40,7 @@ export class AuthService {
   }
 
   refresh(): Observable<AuthResponse> {
-    if (this.refreshInFlight$) {
-      return this.refreshInFlight$;
-    }
+    if (this.refreshInFlight$) return this.refreshInFlight$;
 
     this.refreshInFlight$ = this.http
       .post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, {}, { withCredentials: true })
@@ -58,9 +64,7 @@ export class AuthService {
           : of(null);
       }),
       tap((response) => {
-        if (response) {
-          this.currentUser.set(response.user);
-        }
+        if (response) this.currentUser.set(response.user);
       }),
       map(() => true),
       catchError(() => {
@@ -84,9 +88,7 @@ export class AuthService {
 
   private applyAuthentication(response: AuthResponse): void {
     this.accessToken.set(response.access_token);
-    if (response.user) {
-      this.currentUser.set(response.user);
-    }
+    if (response.user) this.currentUser.set(response.user);
   }
 
   private clearAuthentication(): void {
