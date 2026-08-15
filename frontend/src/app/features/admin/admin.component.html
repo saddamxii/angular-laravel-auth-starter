@@ -1,0 +1,47 @@
+<main class="page">
+  <section class="shell">
+    <header>
+      <div>
+        <a routerLink="/dashboard">← Dashboard</a>
+        <p class="eyebrow">Administration</p>
+        <h1>User management</h1>
+        <p>Manage users and access from one reusable administration screen.</p>
+      </div>
+      <button mat-stroked-button (click)="load()">Refresh</button>
+    </header>
+
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <div class="table-wrap">
+          <table mat-table [dataSource]="users()">
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Name</th>
+              <td mat-cell *matCellDef="let user">{{ user.first_name }} {{ user.last_name }}</td>
+            </ng-container>
+            <ng-container matColumnDef="email">
+              <th mat-header-cell *matHeaderCellDef>Email</th>
+              <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+            </ng-container>
+            <ng-container matColumnDef="roles">
+              <th mat-header-cell *matHeaderCellDef>Roles</th>
+              <td mat-cell *matCellDef="let user">{{ roleNames(user) }}</td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let user">{{ user.is_active ? 'Active' : 'Disabled' }}</td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="columns"></tr>
+            <tr mat-row *matRowDef="let row; columns: columns"></tr>
+          </table>
+        </div>
+
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+        @if (!loading() && !users().length && !error()) {
+          <p>No users found.</p>
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+</main>
