@@ -1,15 +1,17 @@
-FROM node:22-bookworm AS build
+FROM node:22.22.3-bookworm AS build
 
 WORKDIR /app
 
 COPY package*.json ./
-RUN if [ -f package.json ]; then npm ci; fi
+RUN npm install --no-audit --no-fund
 
 COPY . .
-RUN if [ -f package.json ]; then npm run build -- --configuration production; fi
+RUN npm run build:prod
 
-FROM nginx:alpine
+FROM nginx:1.29-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/dist/auth-starter/browser /usr/share/nginx/html
 
 EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1
