@@ -4,6 +4,23 @@ import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap 
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, User } from './auth.models';
 
+export interface PasskeySummary {
+  id: number;
+  name: string;
+  authenticator: string | null;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface AuthSessionSummary {
+  id: number;
+  device_name: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  last_used_at: string | null;
+  created_at: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
@@ -30,6 +47,26 @@ export class AuthService {
 
   resetPassword(payload: { token: string; email: string; password: string; password_confirmation: string }): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${environment.apiUrl}/auth/password/reset`, payload, { withCredentials: true });
+  }
+
+  listPasskeys(): Observable<{ passkeys: PasskeySummary[] }> {
+    return this.http.get<{ passkeys: PasskeySummary[] }>(`${environment.apiUrl}/passkeys`);
+  }
+
+  revokePasskey(id: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${environment.apiUrl}/passkeys/${id}`);
+  }
+
+  listSessions(): Observable<{ sessions: AuthSessionSummary[] }> {
+    return this.http.get<{ sessions: AuthSessionSummary[] }>(`${environment.apiUrl}/sessions`);
+  }
+
+  revokeSession(id: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${environment.apiUrl}/sessions/${id}`);
+  }
+
+  revokeAllSessions(): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${environment.apiUrl}/sessions`);
   }
 
   logout(): Observable<void> {
