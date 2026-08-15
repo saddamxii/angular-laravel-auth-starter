@@ -34,6 +34,8 @@ import { AuthService } from '../../../core/auth/auth.service';
             </button>
           </mat-form-field>
 
+          <div class="password-row"><a routerLink="/forgot-password">Forgot password?</a></div>
+
           @if (errorMessage()) {
             <p class="error" role="alert">{{ errorMessage() }}</p>
           }
@@ -97,9 +99,7 @@ export class LoginComponent {
     try {
       await Passkeys.verify();
       const restored = await firstValueFrom(this.auth.restoreSession());
-      if (!restored) {
-        throw new Error('Passkey authentication did not create a valid application session.');
-      }
+      if (!restored) throw new Error('Passkey authentication did not create a valid application session.');
       await this.router.navigateByUrl('/dashboard');
     } catch {
       this.errorMessage.set('Passkey authentication was cancelled or is unavailable on this device.');
