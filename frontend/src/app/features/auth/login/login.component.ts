@@ -5,6 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { Passkeys } from '@laravel/passkeys';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 
 @Component({
@@ -21,7 +23,7 @@ import { AuthService } from '../../../core/auth/auth.service';
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
           <mat-form-field appearance="outline">
             <mat-label>Email</mat-label>
-            <input matInput type="email" formControlName="email" autocomplete="email" />
+            <input matInput type="email" formControlName="email" autocomplete="email webauthn" />
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -90,13 +92,19 @@ export class LoginComponent {
 
   async passkeyLogin(): Promise<void> {
     this.errorMessage.set(null);
+    this.loading.set(true);
+
     try {
-      const { Passkeys } = await import('@laravel/passkeys');
       await Passkeys.verify();
-      await this.auth.restoreSession().toPromise();
+      const restored = await firstValueFrom(this.auth.restoreSession());
+      if (!restored) {
+        throw new Error('Passkey authentication did not create a valid application session.');
+      }
       await this.router.navigateByUrl('/dashboard');
     } catch {
       this.errorMessage.set('Passkey authentication was cancelled or is unavailable on this device.');
+    } finally {
+      this.loading.set(false);
     }
   }
 }
