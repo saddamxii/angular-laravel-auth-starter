@@ -9,7 +9,6 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
@@ -27,7 +26,7 @@ class AuthController
         $user = DB::transaction(function () use ($validated): User {
             $user = User::create([
                 'first_name' => $validated['first_name'], 'last_name' => $validated['last_name'],
-                'email' => strtolower($validated['email']), 'password' => Hash::make($validated['password']),
+                'email' => strtolower($validated['email']), 'password' => $validated['password'],
             ]);
             $user->roles()->attach(Role::where('name', 'user')->firstOrFail());
             return $user;
@@ -41,7 +40,7 @@ class AuthController
     {
         $credentials = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string']]);
         $user = User::where('email', strtolower($credentials['email']))->first();
-        if (! $user || ! $user->is_active || ! Hash::check($credentials['password'], $user->password)) {
+        if (! $user || ! $user->is_active || ! password_verify($credentials['password'], $user->password)) {
             return response()->json(['message' => 'The provided credentials are invalid.'], 401);
         }
         if (! $user->hasVerifiedEmail()) return response()->json(['message' => 'Please verify your email address before signing in.'], 403);
@@ -61,7 +60,6 @@ class AuthController
         try {
             $payload = JWTAuth::setToken($refreshToken)->getPayload();
             if ($payload->get('token_type') !== 'refresh') return response()->json(['message' => 'Invalid refresh token.'], 401);
-
             $user = User::find($payload->get('sub'));
             if (! $user || ! $user->is_active || ! $sessions->isActive($refreshToken, $user->id)) {
                 return response()->json(['message' => 'Refresh session has been revoked or is invalid.'], 401);
@@ -93,7 +91,7 @@ class AuthController
             'email' => strtolower($validated['email']), 'password' => $validated['password'],
             'password_confirmation' => $request->input('password_confirmation'), 'token' => $validated['token'],
         ], function (User $user, string $password): void {
-            $user->forceFill(['password' => Hash::make($password)])->save();
+            $user->forceFill(['password' => $password])->save();
             event(new PasswordReset($user));
         });
         if ($status !== Password::PASSWORD_RESET) return response()->json(['message' => 'The password reset link is invalid or expired.'], 422);
