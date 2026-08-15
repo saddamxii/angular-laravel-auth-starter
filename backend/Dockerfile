@@ -11,7 +11,17 @@ WORKDIR /var/www/html
 
 ARG INSTALL_DEV=false
 COPY composer.json ./
-RUN if [ "$INSTALL_DEV" = "true" ]; then composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader; else composer install --no-interaction --prefer-dist --no-progress --no-dev --optimize-autoloader; fi
+RUN set -eux; \
+    for attempt in 1 2 3; do \
+      if [ "$INSTALL_DEV" = "true" ]; then \
+        composer install --no-interaction --prefer-source --no-progress --optimize-autoloader && exit 0; \
+      else \
+        composer install --no-interaction --prefer-source --no-progress --no-dev --optimize-autoloader && exit 0; \
+      fi; \
+      echo "Composer install attempt $attempt failed; retrying..."; \
+      sleep $((attempt * 5)); \
+    done; \
+    exit 1
 
 COPY . .
 
