@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AuditLogController;
+use App\Http\Controllers\Api\Admin\RoleController;
+use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +24,19 @@ Route::middleware('web')->prefix('auth')->group(function (): void {
     });
 });
 
-Route::middleware(['auth:api', 'access.token'])->get('/health/authenticated', fn () => response()->json([
-    'status' => 'ok',
-]));
+Route::middleware(['auth:api', 'access.token'])->group(function (): void {
+    Route::get('/health/authenticated', fn () => response()->json(['status' => 'ok']));
+
+    Route::prefix('admin')->group(function (): void {
+        Route::get('users', [UserController::class, 'index'])->middleware('permission:users.view');
+        Route::post('users', [UserController::class, 'store'])->middleware('permission:users.create');
+        Route::get('users/{user}', [UserController::class, 'show'])->middleware('permission:users.view');
+        Route::put('users/{user}', [UserController::class, 'update'])->middleware('permission:users.update');
+        Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('permission:users.delete');
+
+        Route::get('roles', [RoleController::class, 'index'])->middleware('permission:roles.view');
+        Route::put('roles/{role}', [RoleController::class, 'update'])->middleware('permission:roles.manage');
+
+        Route::get('audit-logs', [AuditLogController::class, 'index'])->middleware('permission:audit_logs.view');
+    });
+});
