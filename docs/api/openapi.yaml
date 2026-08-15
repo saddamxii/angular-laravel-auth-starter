@@ -1,0 +1,62 @@
+openapi: 3.0.3
+info:
+  title: Angular Laravel Auth Starter API
+  version: 0.1.0
+  description: Reusable authentication and authorization API.
+servers:
+  - url: /api
+paths:
+  /auth/register:
+    post:
+      summary: Register a user
+  /auth/login:
+    post:
+      summary: Login with email and password
+  /auth/refresh:
+    post:
+      summary: Rotate the refresh token and issue a new access token
+  /auth/logout:
+    post:
+      summary: Logout and revoke the current refresh session
+      security: [{ bearerAuth: [] }]
+  /auth/me:
+    get:
+      summary: Get the authenticated user
+      security: [{ bearerAuth: [] }]
+  /auth/password/forgot:
+    post:
+      summary: Request a password reset
+  /auth/password/reset:
+    post:
+      summary: Complete a password reset
+  /auth/email/resend:
+    post:
+      summary: Resend email verification
+  /sessions:
+    get:
+      summary: List active authentication sessions
+      security: [{ bearerAuth: [] }]
+    delete:
+      summary: Revoke all authentication sessions
+      security: [{ bearerAuth: [] }]
+  /admin/users:
+    get:
+      summary: List users
+      security: [{ bearerAuth: [] }]
+    post:
+      summary: Create a user
+      security: [{ bearerAuth: [] }]
+  /admin/roles:
+    get:
+      summary: List roles and permissions
+      security: [{ bearerAuth: [] }]
+  /admin/audit-logs:
+    get:
+      summary: List security audit logs
+      security: [{ bearerAuth: [] }]
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
