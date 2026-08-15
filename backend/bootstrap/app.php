@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => App\Http\Middleware\RoleMiddleware::class,
             'permission' => App\Http\Middleware\PermissionMiddleware::class,
             'access.token' => App\Http\Middleware\EnsureAccessToken::class,
+            'auth.audit' => App\Http\Middleware\AuthenticationAuditMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
