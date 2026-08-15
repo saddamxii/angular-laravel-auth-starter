@@ -26,6 +26,30 @@ class AuthSessionManager
         );
     }
 
+    public function isActive(string $refreshToken, int $userId): bool
+    {
+        try {
+            $tokenId = (string) JWTAuth::setToken($refreshToken)->getPayload()->get('jti');
+            return AuthSession::query()
+                ->where('user_id', $userId)
+                ->where('token_id', hash('sha256', $tokenId))
+                ->whereNull('revoked_at')
+                ->exists();
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    public function touch(string $refreshToken): void
+    {
+        try {
+            $tokenId = (string) JWTAuth::setToken($refreshToken)->getPayload()->get('jti');
+            AuthSession::where('token_id', hash('sha256', $tokenId))->update(['last_used_at' => now()]);
+        } catch (\Throwable) {
+            // Invalid tokens are already unusable.
+        }
+    }
+
     public function revokeByRefreshToken(string $refreshToken): void
     {
         try {
