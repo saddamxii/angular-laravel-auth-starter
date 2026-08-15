@@ -6,10 +6,11 @@ return [
     'user_handle_secret' => env('PASSKEYS_USER_HANDLE_SECRET', config('app.key')),
     'timeout' => 60000,
 
-    // Passkey verification will issue the application's JWT through the API guard.
-    'guard' => 'api',
-    'middleware' => [],
-    'management_middleware' => ['auth:api', 'access.token'],
+    // Laravel's passkey server requires a stateful guard for WebAuthn login.
+    // The custom response converts the verified web session into our JWT API session.
+    'guard' => 'web',
+    'middleware' => ['web'],
+    'management_middleware' => ['auth:web'],
     'throttle' => 'throttle:6,1',
     'redirect' => '/dashboard',
 ];
