@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Admin\AuditLogController;
 use App\Http\Controllers\Api\Admin\RoleController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\SessionController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('web')->prefix('auth')->group(function (): void {
@@ -26,6 +27,10 @@ Route::middleware('web')->prefix('auth')->group(function (): void {
 
 Route::middleware(['auth:api', 'access.token'])->group(function (): void {
     Route::get('/health/authenticated', fn () => response()->json(['status' => 'ok']));
+
+    Route::get('sessions', [SessionController::class, 'index'])->middleware('permission:sessions.view');
+    Route::delete('sessions/{session}', [SessionController::class, 'revoke'])->middleware('permission:sessions.revoke');
+    Route::delete('sessions', [SessionController::class, 'revokeAll'])->middleware('permission:sessions.revoke');
 
     Route::prefix('admin')->group(function (): void {
         Route::get('users', [UserController::class, 'index'])->middleware('permission:users.view');
