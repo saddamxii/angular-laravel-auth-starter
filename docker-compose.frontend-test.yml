@@ -4,6 +4,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.test
     working_dir: /app
+    volumes:
+      - ./frontend/test-results:/app/test-results
+      - ./frontend/playwright-report:/app/playwright-report
     networks: [auth_starter_frontend_test]
 
 networks:
