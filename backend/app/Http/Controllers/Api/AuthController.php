@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
 class AuthController
@@ -103,6 +106,57 @@ class AuthController
         } catch (\Throwable) {
             return response()->json(['message' => 'Invalid or expired refresh token.'], 401);
         }
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate(['email' => ['required', 'email']]);
+
+        Password::sendResetLink(['email' => strtolower($validated['email'])]);
+
+        return response()->json([
+            'message' => 'If the email exists, a password reset link has been sent.',
+        ]);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => [
+                'required', 'string', 'min:12', 'max:128',
+                'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/',
+                'regex:/[^A-Za-z0-9]/', 'confirmed',
+            ],
+        ]);
+
+        $status = Password::reset(
+            [
+                'email' => strtolower($validated['email']),
+                'password' => $validated['password'],
+                'password_confirmation' => $request->input('password_confirmation'),
+                'token' => $validated['token'],
+            ],
+            function (User $user, string $password): void {
+                $user->forceFill(['password' => $password])->save();
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status !== Password::PASSWORD_RESET) {
+            return response()->json(['message' => 'The password reset link is invalid or expired.'], 422);
+        }
+
+        return response()->json(['message' => 'Password reset successfully.']);
+    }
+
+    public function passwordResetPage(string $token): mixed
+    {
+        $email = request()->query('email');
+        abort_unless(is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL), 400);
+
+        return redirect()->to('/reset-password?token='.urlencode($token).'&email='.urlencode($email));
     }
 
     public function verifyEmail(Request $request, int $id, string $hash): JsonResponse
