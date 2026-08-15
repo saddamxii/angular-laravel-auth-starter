@@ -7,6 +7,9 @@ Route::middleware('web')->prefix('auth')->group(function (): void {
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:auth');
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:auth');
     Route::post('refresh', [AuthController::class, 'refresh'])->middleware('throttle:refresh');
+    Route::post('password/forgot', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth');
+    Route::post('password/reset', [AuthController::class, 'resetPassword'])->middleware('throttle:auth');
+    Route::get('password/reset/{token}', [AuthController::class, 'passwordResetPage'])->name('password.reset');
     Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
         ->middleware('signed')
         ->name('verification.verify');
