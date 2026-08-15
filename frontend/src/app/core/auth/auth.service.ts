@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
+import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, User } from './auth.models';
 
@@ -49,8 +49,19 @@ export class AuthService {
 
   restoreSession(): Observable<boolean> {
     return this.refresh().pipe(
-      switchMapToCurrentUser(this.http, this.accessToken),
-      tap((user) => this.currentUser.set(user)),
+      switchMap(() => {
+        const token = this.accessToken();
+        return token
+          ? this.http.get<{ user: User }>(`${environment.apiUrl}/auth/me`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+          : of(null);
+      }),
+      tap((response) => {
+        if (response) {
+          this.currentUser.set(response.user);
+        }
+      }),
       map(() => true),
       catchError(() => {
         this.clearAuthentication();
@@ -83,17 +94,3 @@ export class AuthService {
     this.currentUser.set(null);
   }
 }
-
-function switchMapToCurrentUser(http: HttpClient, accessToken: () => string | null) {
-  return (source: Observable<AuthResponse>): Observable<User> =>
-    source.pipe(
-      map(() => accessToken()),
-      switchMap((token) =>
-        token
-          ? http.get<{ user: User }>(`${environment.apiUrl}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }).pipe(map((response) => response.user))
-          : throwError(() => new Error('Access token was not created.')),
-      ),
-    );
-}
-
-import { switchMap } from 'rxjs';
