@@ -6,11 +6,13 @@ use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Passkeys\Contracts\PasskeyUser;
+use Laravel\Passkeys\PasskeyAuthenticatable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable implements JWTSubject, MustVerifyEmail
+class User extends Authenticatable implements JWTSubject, MustVerifyEmail, PasskeyUser
 {
-    use Notifiable, MustVerifyEmailTrait;
+    use Notifiable, MustVerifyEmailTrait, PasskeyAuthenticatable;
 
     protected $fillable = [
         'first_name',
@@ -42,6 +44,16 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
     public function getJWTCustomClaims(): array
     {
         return [];
+    }
+
+    public function getPasskeyDisplayName(): string
+    {
+        return trim($this->first_name.' '.$this->last_name) ?: $this->email;
+    }
+
+    public function getPasskeyUsername(): string
+    {
+        return $this->email;
     }
 
     public function roles()
