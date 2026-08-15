@@ -12,7 +12,10 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "outputPath": "dist/auth-starter",
+            "outputPath": {
+              "base": "dist/auth-starter",
+              "browser": "browser"
+            },
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [],
@@ -29,11 +32,7 @@
           "configurations": {
             "production": {
               "budgets": [
-                {
-                  "type": "initial",
-                  "maximumWarning": "1mb",
-                  "maximumError": "2mb"
-                }
+                { "type": "initial", "maximumWarning": "1mb", "maximumError": "2mb" }
               ],
               "outputHashing": "all"
             },
@@ -55,20 +54,14 @@
         },
         "test": {
           "builder": "@angular/build:unit-test",
-          "options": {
-            "tsConfig": "tsconfig.spec.json"
-          }
+          "options": { "tsConfig": "tsconfig.spec.json" }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",
-          "options": {
-            "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
-          }
+          "options": { "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"] }
         }
       }
     }
   },
-  "cli": {
-    "schematicCollections": ["angular-eslint"]
-  }
+  "cli": { "schematicCollections": ["angular-eslint"] }
 }
