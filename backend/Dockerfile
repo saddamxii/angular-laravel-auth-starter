@@ -9,8 +9,9 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
+ARG INSTALL_DEV=false
 COPY composer.json ./
-RUN composer install --no-interaction --prefer-dist --no-progress --no-dev --optimize-autoloader
+RUN if [ "$INSTALL_DEV" = "true" ]; then composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader; else composer install --no-interaction --prefer-dist --no-progress --no-dev --optimize-autoloader; fi
 
 COPY . .
 
