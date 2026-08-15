@@ -8,10 +8,11 @@ services:
       MYSQL_PASSWORD: auth_starter_test
       MYSQL_ROOT_PASSWORD: auth_starter_test_root
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -pauth_starter_test_root --silent"]
+      test: ["CMD-SHELL", "mysql -h 127.0.0.1 -u auth_starter_test -pauth_starter_test -D auth_starter_test -e 'SELECT 1' --silent"]
       interval: 3s
       timeout: 5s
-      retries: 20
+      retries: 30
+      start_period: 10s
     networks: [auth_starter_test]
 
   backend-test:
@@ -44,7 +45,7 @@ services:
     depends_on:
       mysql-test:
         condition: service_healthy
-    command: ["sh", "-c", "php artisan migrate:fresh --seed --force && php artisan test --colors=always"]
+    command: ["sh", "-c", "for i in $(seq 1 60); do php -r '$c=@new PDO(\"mysql:host=mysql-test;port=3306;dbname=auth_starter_test\", \"auth_starter_test\", \"auth_starter_test\"); exit(0);' 2>/dev/null && break; echo \"Waiting for MySQL ($i/60)...\"; sleep 1; done; php artisan migrate:fresh --seed --force && php artisan test --colors=always"]
     networks: [auth_starter_test]
 
 networks:
