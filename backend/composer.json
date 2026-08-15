@@ -1,0 +1,58 @@
+{
+  "$schema": "https://getcomposer.org/schema.json",
+  "name": "saddamxii/angular-laravel-auth-starter-api",
+  "type": "project",
+  "description": "Reusable Laravel 13 authentication API starter.",
+  "keywords": ["laravel", "authentication", "jwt", "passkeys", "webauthn"],
+  "license": "MIT",
+  "require": {
+    "php": "^8.3",
+    "laravel/framework": "^13.0",
+    "laravel/fortify": "^1.0",
+    "php-open-source-saver/jwt-auth": "^2.9"
+  },
+  "require-dev": {
+    "fakerphp/faker": "^1.24",
+    "laravel/pint": "^1.24",
+    "mockery/mockery": "^1.6",
+    "nunomaduro/collision": "^8.8",
+    "phpunit/phpunit": "^11.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/",
+      "Database\\Factories\\": "database/factories/",
+      "Database\\Seeders\\": "database/seeders/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "setup": [
+      "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+      "@php artisan key:generate --ansi",
+      "@php artisan migrate --force"
+    ],
+    "test": "@php artisan test",
+    "lint": "@php artisan pint --test"
+  },
+  "extra": {
+    "laravel": {
+      "dont-discover": []
+    }
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "sort-packages": true,
+    "allow-plugins": {
+      "pestphp/pest-plugin": true,
+      "php-http/discovery": true
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
