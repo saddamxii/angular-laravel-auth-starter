@@ -2,7 +2,6 @@
 
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
-use Monolog\Handler\SyslogUdpHandler;
 
 return [
     'default' => env('LOG_CHANNEL', 'stack'),
@@ -28,13 +27,6 @@ return [
             'handler' => StreamHandler::class,
             'formatter' => env('LOG_STDERR_FORMATTER'),
             'with' => ['stream' => 'php://stderr'],
-            'processors' => [Psr\Log\LogRecord::class],
-        ],
-        'syslog' => [
-            'driver' => 'syslog',
-            'level' => env('LOG_LEVEL', 'debug'),
-            'facility' => env('LOG_SYSLOG_FACILITY', LOG_USER),
-            'replace_placeholders' => true,
         ],
         'errorlog' => [
             'driver' => 'errorlog',
