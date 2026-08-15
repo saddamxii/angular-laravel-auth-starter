@@ -13,6 +13,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
   },
   {
+    path: 'security',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/security/security.component').then((m) => m.SecurityComponent),
+  },
+  {
     path: 'forbidden',
     loadComponent: () => import('./features/forbidden/forbidden.component').then((m) => m.ForbiddenComponent),
   },
