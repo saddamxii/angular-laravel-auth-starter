@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
             'roles.manage',
             'sessions.view',
             'sessions.revoke',
+            'passkeys.view',
+            'passkeys.revoke',
             'audit_logs.view',
         ];
 
@@ -37,7 +39,7 @@ class DatabaseSeeder extends Seeder
             'admin' => $permissions,
             'manager' => ['dashboard.view', 'users.view', 'users.create', 'users.update', 'sessions.view', 'sessions.revoke'],
             'editor' => ['dashboard.view', 'users.view'],
-            'user' => ['dashboard.view'],
+            'user' => ['dashboard.view', 'sessions.view', 'sessions.revoke', 'passkeys.view', 'passkeys.revoke'],
         ];
 
         foreach ($rolePermissions as $roleName => $rolePermissionNames) {
