@@ -1,0 +1,11 @@
+services:
+  frontend-test:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test
+    working_dir: /app
+    networks: [auth_starter_frontend_test]
+
+networks:
+  auth_starter_frontend_test:
+    driver: bridge
