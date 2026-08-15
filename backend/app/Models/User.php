@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
+use Illuminate\Auth\Passwords\CanResetPassword as CanResetPasswordTrait;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -10,9 +12,9 @@ use Laravel\Passkeys\Contracts\PasskeyUser;
 use Laravel\Passkeys\PasskeyAuthenticatable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable implements JWTSubject, MustVerifyEmail, PasskeyUser
+class User extends Authenticatable implements JWTSubject, MustVerifyEmail, CanResetPassword, PasskeyUser
 {
-    use Notifiable, MustVerifyEmailTrait, PasskeyAuthenticatable;
+    use Notifiable, MustVerifyEmailTrait, CanResetPasswordTrait, PasskeyAuthenticatable;
 
     protected $fillable = [
         'first_name',
