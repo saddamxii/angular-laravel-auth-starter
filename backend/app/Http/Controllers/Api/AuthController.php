@@ -64,6 +64,8 @@ class AuthController
             return response()->json(['message' => 'Please verify your email address before signing in.'], 403);
         }
 
+        auth('web')->login($user);
+
         $token = auth('api')->claims(['token_type' => 'access'])->setTTL((int) config('jwt.ttl'))->login($user);
         $refreshToken = auth('api')->claims(['token_type' => 'refresh'])->setTTL((int) config('jwt.refresh_ttl'))->login($user);
 
@@ -89,6 +91,8 @@ class AuthController
             if (! $user || ! $user->is_active) {
                 return response()->json(['message' => 'Unauthorized.'], 401);
             }
+
+            auth('web')->login($user);
 
             $accessToken = auth('api')->claims(['token_type' => 'access'])->setTTL((int) config('jwt.ttl'))->login($user);
             $newRefreshToken = auth('api')->claims(['token_type' => 'refresh'])->setTTL((int) config('jwt.refresh_ttl'))->login($user);
@@ -141,6 +145,8 @@ class AuthController
         } catch (\Throwable) {
             // Logout remains idempotent from the client's perspective.
         }
+
+        auth('web')->logout();
 
         return response()->json(['message' => 'Logged out successfully.'])
             ->withCookie(cookie()->forget('refresh_token'));
