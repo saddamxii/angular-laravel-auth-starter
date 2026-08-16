@@ -12,6 +12,7 @@ abstract class TestCase extends BaseTestCase
     {
         $app = require __DIR__.'/../bootstrap/app.php';
 
+        // Explicitly bootstrap Laravel so facades, configuration and services are available in PHPUnit.
         $app->make(Kernel::class)->bootstrap();
 
         return $app;
