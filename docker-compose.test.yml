@@ -45,7 +45,7 @@ services:
     depends_on:
       mysql-test:
         condition: service_healthy
-    command: ["sh", "-c", "php artisan migrate:fresh --seed --force && php artisan test --colors=always"]
+    command: ["sh", "-c", "php artisan migrate:fresh --seed --force && timeout 180s php artisan test --debug --colors=always"]
     networks: [auth_starter_test]
 
 networks:
