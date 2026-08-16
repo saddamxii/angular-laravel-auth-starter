@@ -45,7 +45,39 @@ services:
     depends_on:
       mysql-test:
         condition: service_healthy
-    command: ["sh", "-c", "php artisan migrate:fresh --seed --force && php artisan test --colors=always"]
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        stage() { echo "[BACKEND-TEST] $1"; }
+        run_stage() {
+          name="$1"
+          shift
+          stage "START $name"
+          timeout 30s "$@"
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "[BACKEND-TEST] FAIL $name (exit=$rc)" >&2
+            exit "$rc"
+          fi
+          stage "PASS $name"
+        }
+        stage "START database connectivity"
+        timeout 30s php artisan tinker --execute='DB::connection()->getPdo(); echo "DB_OK\n";' || { echo "[BACKEND-TEST] FAIL database connectivity" >&2; exit 1; }
+        stage "PASS database connectivity"
+        run_stage "migrations and seed" php artisan migrate:fresh --seed --force
+        run_stage "laravel bootstrap" php artisan about
+        run_stage "test discovery" php artisan test --list-tests
+        stage "START phpunit"
+        timeout 180s vendor/bin/phpunit --configuration phpunit.xml --testdox --colors=never
+        rc=$?
+        if [ "$rc" -ne 0 ]; then
+          echo "[BACKEND-TEST] FAIL phpunit (exit=$rc)" >&2
+          exit "$rc"
+        fi
+        stage "PASS phpunit"
+        stage "ALL BACKEND TEST STAGES PASSED"
     networks: [auth_starter_test]
 
 networks:
