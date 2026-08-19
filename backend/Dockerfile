@@ -10,13 +10,15 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 ARG INSTALL_DEV=false
-COPY composer.json ./
+COPY composer.json composer.lock* ./
+
+# CHANGEMENT : Suppression de --prefer-source, ajout de --prefer-dist et nettoyage du cache Composer
 RUN set -eux; \
     for attempt in 1 2 3; do \
       if [ "$INSTALL_DEV" = "true" ]; then \
-        composer install --no-interaction --prefer-source --no-progress --optimize-autoloader && exit 0; \
+        composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader && composer clear-cache && exit 0; \
       else \
-        composer install --no-interaction --prefer-source --no-progress --no-dev --optimize-autoloader && exit 0; \
+        composer install --no-interaction --prefer-dist --no-progress --no-dev --optimize-autoloader && composer clear-cache && exit 0; \
       fi; \
       echo "Composer install attempt $attempt failed; retrying..."; \
       sleep $((attempt * 5)); \
@@ -30,7 +32,8 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/fra
     && chown -R www-data:www-data storage bootstrap/cache
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 8000
 

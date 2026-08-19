@@ -26,12 +26,12 @@ class AuthenticationTest extends TestCase
             'last_name' => 'User',
             'email' => 'verified@example.test',
             'password' => Hash::make('StrongPass!123456'),
-            'email_verified_at' => now(),
             'is_active' => true,
         ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
         $user->roles()->attach(Role::where('name', 'user')->firstOrFail());
 
-        $response = $this->withoutMiddleware(VerifyCsrfToken::class)->postJson('/auth/login', [
+        $response = $this->withoutMiddleware(VerifyCsrfToken::class)->postJson('/api/auth/login', [
             'email' => $user->email,
             'password' => 'StrongPass!123456',
         ]);
@@ -56,7 +56,7 @@ class AuthenticationTest extends TestCase
         $user->roles()->attach(Role::where('name', 'user')->firstOrFail());
 
         $this->withoutMiddleware(VerifyCsrfToken::class)
-            ->postJson('/auth/login', [
+            ->postJson('/api/auth/login', [
                 'email' => $user->email,
                 'password' => 'StrongPass!123456',
             ])
@@ -71,13 +71,13 @@ class AuthenticationTest extends TestCase
             'last_name' => 'User',
             'email' => 'inactive@example.test',
             'password' => Hash::make('StrongPass!123456'),
-            'email_verified_at' => now(),
             'is_active' => false,
         ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
         $user->roles()->attach(Role::where('name', 'user')->firstOrFail());
 
         $this->withoutMiddleware(VerifyCsrfToken::class)
-            ->postJson('/auth/login', [
+            ->postJson('/api/auth/login', [
                 'email' => $user->email,
                 'password' => 'StrongPass!123456',
             ])
@@ -91,19 +91,19 @@ class AuthenticationTest extends TestCase
             'last_name' => 'User',
             'email' => 'api-user@example.test',
             'password' => Hash::make('StrongPass!123456'),
-            'email_verified_at' => now(),
             'is_active' => true,
         ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
         $user->roles()->attach(Role::where('name', 'user')->firstOrFail());
 
-        $login = $this->withoutMiddleware(VerifyCsrfToken::class)->postJson('/auth/login', [
+        $login = $this->withoutMiddleware(VerifyCsrfToken::class)->postJson('/api/auth/login', [
             'email' => $user->email,
             'password' => 'StrongPass!123456',
         ]);
         $token = $login->json('access_token');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
-            ->getJson('/health/authenticated')
+            ->getJson('/api/health/authenticated')
             ->assertOk()
             ->assertJson(['status' => 'ok']);
     }
@@ -115,19 +115,19 @@ class AuthenticationTest extends TestCase
             'last_name' => 'User',
             'email' => 'regular@example.test',
             'password' => Hash::make('StrongPass!123456'),
-            'email_verified_at' => now(),
             'is_active' => true,
         ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
         $user->roles()->attach(Role::where('name', 'user')->firstOrFail());
 
-        $login = $this->withoutMiddleware(VerifyCsrfToken::class)->postJson('/auth/login', [
+        $login = $this->withoutMiddleware(VerifyCsrfToken::class)->postJson('/api/auth/login', [
             'email' => $user->email,
             'password' => 'StrongPass!123456',
         ]);
         $token = $login->json('access_token');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
-            ->getJson('/admin/users')
+            ->getJson('/api/admin/users')
             ->assertForbidden();
     }
 
@@ -138,19 +138,19 @@ class AuthenticationTest extends TestCase
             'last_name' => 'Admin',
             'email' => 'test-admin@example.test',
             'password' => Hash::make('StrongPass!123456'),
-            'email_verified_at' => now(),
             'is_active' => true,
         ]);
+        $admin->forceFill(['email_verified_at' => now()])->save();
         $admin->roles()->attach(Role::where('name', 'admin')->firstOrFail());
 
-        $login = $this->withoutMiddleware(VerifyCsrfToken::class)->postJson('/auth/login', [
+        $login = $this->withoutMiddleware(VerifyCsrfToken::class)->postJson('/api/auth/login', [
             'email' => $admin->email,
             'password' => 'StrongPass!123456',
         ]);
         $token = $login->json('access_token');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
-            ->getJson('/admin/users')
+            ->getJson('/api/admin/users')
             ->assertOk();
     }
 }

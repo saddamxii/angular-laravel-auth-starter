@@ -1,7 +1,6 @@
 services:
   mysql-test:
     image: mysql:8.4.10
-    container_name: auth_starter_mysql_test
     environment:
       MYSQL_DATABASE: auth_starter_test
       MYSQL_USER: auth_starter_test
@@ -26,7 +25,7 @@ services:
       APP_DEBUG: false
       APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       APP_URL: http://localhost:4200
-      JWT_SECRET: testing-secret-change-this
+      JWT_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       JWT_TTL: 15
       JWT_REFRESH_TTL: 20160
       DB_CONNECTION: mysql
@@ -52,16 +51,16 @@ services:
         set -eu
         stage() { echo "[BACKEND-TEST] $1"; }
         run_stage() {
-          name="$1"
+          name="$$1"
           shift
-          stage "START $name"
-          timeout 30s "$@"
-          rc=$?
-          if [ "$rc" -ne 0 ]; then
-            echo "[BACKEND-TEST] FAIL $name (exit=$rc)" >&2
-            exit "$rc"
+          stage "START $$name"
+          timeout 30s "$$@"
+          rc=$$?
+          if [ "$$rc" -ne 0 ]; then
+            echo "[BACKEND-TEST] FAIL $$name (exit=$$rc)" >&2
+            exit "$$rc"
           fi
-          stage "PASS $name"
+          stage "PASS $$name"
         }
         stage "START database connectivity"
         timeout 30s php artisan tinker --execute='DB::connection()->getPdo(); echo "DB_OK\n";' || { echo "[BACKEND-TEST] FAIL database connectivity" >&2; exit 1; }
@@ -71,10 +70,10 @@ services:
         run_stage "test discovery" php artisan test --list-tests
         stage "START phpunit"
         timeout 180s vendor/bin/phpunit --configuration phpunit.xml --testdox --colors=never
-        rc=$?
-        if [ "$rc" -ne 0 ]; then
-          echo "[BACKEND-TEST] FAIL phpunit (exit=$rc)" >&2
-          exit "$rc"
+        rc=$$?
+        if [ "$$rc" -ne 0 ]; then
+          echo "[BACKEND-TEST] FAIL phpunit (exit=$$rc)" >&2
+          exit "$$rc"
         fi
         stage "PASS phpunit"
         stage "ALL BACKEND TEST STAGES PASSED"

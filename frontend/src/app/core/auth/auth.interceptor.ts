@@ -1,6 +1,7 @@
 import { HttpContextToken, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
 
 export const SKIP_AUTH = new HttpContextToken<boolean>(() => false);
@@ -13,8 +14,21 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   const token = auth.getAccessToken();
-  const request = token
-    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
+  const csrfToken = auth.getCsrfToken();
+  const isApiRequest = req.url.startsWith(`${environment.apiUrl}/`);
+  const needsCsrfToken = isApiRequest && !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  if (needsCsrfToken && csrfToken) {
+    headers['X-CSRF-TOKEN'] = csrfToken;
+  }
+
+  const request = Object.keys(headers).length > 0
+    ? req.clone({ setHeaders: headers })
     : req;
 
   return next(request).pipe(

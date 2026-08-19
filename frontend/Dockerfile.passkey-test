@@ -1,0 +1,22 @@
+FROM node:22.22.3-bookworm AS build
+
+WORKDIR /app
+
+RUN npm install -g npm@12 --no-audit --no-fund
+
+COPY package*.json ./
+RUN npm install --no-audit --no-fund
+
+COPY . .
+RUN npm run build:prod
+
+FROM nginx:1.29-alpine
+
+RUN apk add --no-cache openssl
+
+COPY nginx.passkey-test.conf.template /etc/nginx/templates/default.conf.template
+COPY generate-passkey-test-cert.sh /docker-entrypoint.d/40-generate-passkey-test-cert.sh
+RUN chmod +x /docker-entrypoint.d/40-generate-passkey-test-cert.sh
+COPY --from=build /app/dist/auth-starter/browser /usr/share/nginx/html
+
+EXPOSE 443

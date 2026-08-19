@@ -43,8 +43,8 @@ class LoginTest extends TestCase
             'last_name' => 'Doe',
             'email' => 'jane@example.test',
             'password' => Hash::make('StrongPassword!123'),
-            'email_verified_at' => now(),
         ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
         $user->roles()->attach(Role::where('name', 'user')->first());
 
         $response = $this->postJson('/api/auth/login', [

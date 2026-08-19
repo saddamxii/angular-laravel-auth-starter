@@ -30,7 +30,7 @@ class AuthorizationTest extends TestCase
         ]);
         $user->roles()->attach(Role::where('name', 'user')->first());
 
-        $token = JWTAuth::claims(['token_type' => 'access'])->setTTL(15)->login($user);
+        $token = JWTAuth::claims(['token_type' => 'access'])->fromUser($user);
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/admin/users');

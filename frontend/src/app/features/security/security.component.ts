@@ -5,6 +5,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Passkeys } from '@laravel/passkeys';
+import { firstValueFrom } from 'rxjs';
 import { AuthService, AuthSessionSummary, PasskeySummary } from '../../core/auth/auth.service';
 
 @Component({
@@ -84,10 +85,13 @@ export class SecurityComponent implements OnInit {
   async addPasskey(): Promise<void> {
     this.loading.set(true); this.message.set(null); this.error.set(null);
     try {
+      await firstValueFrom(this.auth.initializeCsrf());
       await Passkeys.register({ name: this.name().trim() });
       this.message.set('Passkey registered successfully.');
       this.loadSecurityData();
-    } catch { this.error.set('The passkey could not be registered. Please try again.'); }
+    } catch (error: unknown) {
+      this.error.set(error instanceof Error ? error.message : 'The passkey could not be registered. Please try again.');
+    }
     finally { this.loading.set(false); }
   }
 
