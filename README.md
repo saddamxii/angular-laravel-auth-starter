@@ -29,9 +29,9 @@ Authentication will support password authentication, short-lived access tokens w
 
 ## Development status
 
-Phases 1–4: infrastructure, backend authentication, Angular client, and the
-containerized integration flow are implemented and validated. Later hardening
-and CI phases remain to be completed.
+Phases 1–7 are implemented and validated. The Jenkins pipeline runs backend,
+frontend, WebAuthn, dependency-audit, production-image, and Docker smoke-test
+stages from a clean environment.
 
 ## Local startup and integration check
 
@@ -93,11 +93,46 @@ in-memory virtual authenticator only; no physical authenticator is needed.
 - Keep access tokens short-lived.
 - Use secure cookies and HTTPS in production.
 
+## Testing
+
+Run the backend suite:
+
+```powershell
+docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from backend-test
+```
+
+Run frontend linting, unit tests, and Chromium E2E tests:
+
+```powershell
+docker compose -f docker-compose.frontend-test.yml up --build --abort-on-container-exit --exit-code-from frontend-test
+```
+
+Run the HTTPS WebAuthn integration test with a virtual authenticator:
+
+```powershell
+docker compose -p auth-starter-passkey-test -f docker-compose.passkey-test.yml up --build --abort-on-container-exit --exit-code-from passkey-test
+```
+
+Each command removes its test containers when it completes. Use
+`docker compose down -v --remove-orphans` if an interrupted local run leaves
+resources behind.
+
 ## Jenkins
 
 The [Jenkins pipeline guide](docs/ci/jenkins.md) documents the required Docker
 agent capabilities and the backend, frontend, WebAuthn, audit, image, and
 smoke-test stages executed by `Jenkinsfile`.
+
+## GitHub workflow
+
+The `main` branch should remain protected. Create focused branches using
+`feature/`, `bugfix/`, `hotfix/`, or `docs/`, then open a pull request against
+`main`. Require the Jenkins CI job before merge and do not commit `.env` files
+or production credentials.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules,
+[SECURITY.md](SECURITY.md) for private vulnerability reporting, and
+[CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## Documentation
 
