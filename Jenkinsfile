@@ -69,8 +69,11 @@ pipeline {
 
         stage('Security Audit') {
             steps {
-                sh 'docker run --rm -v "$PWD/backend:/app:ro" -w /app composer:2 composer audit --locked --no-interaction'
-                sh 'docker run --rm -v "$PWD/frontend:/app" -w /app node:22.22.3-bookworm sh -c "npm install -g npm@12 --no-audit --no-fund && npm install --package-lock-only --ignore-scripts --no-audit --no-fund && npm audit --audit-level=high"'
+                // The Jenkins controller runs in a container. Bind mounting $PWD into
+                // a sibling Docker container resolves on the Docker host, not inside
+                // Jenkins, so run audits in the images that already contain the source.
+                sh 'docker compose -f docker-compose.test.yml run --rm --no-deps backend-test composer audit --no-interaction'
+                sh 'docker compose -f docker-compose.frontend-test.yml run --rm --no-deps frontend-test sh -c "npm install --package-lock-only --ignore-scripts --no-audit --no-fund && npm audit --audit-level=high"'
             }
         }
 
