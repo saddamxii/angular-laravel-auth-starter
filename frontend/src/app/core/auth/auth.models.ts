@@ -17,6 +17,7 @@ export interface User {
   id: number;
   first_name: string;
   last_name: string;
+  username: string | null;
   email: string;
   email_verified_at: string | null;
   is_active: boolean;
@@ -31,13 +32,14 @@ export interface AuthResponse {
 }
 
 export interface LoginRequest {
-  email: string;
+  login: string;
   password: string;
 }
 
 export interface RegisterRequest {
   first_name: string;
   last_name: string;
+  username: string;
   email: string;
   password: string;
   password_confirmation: string;

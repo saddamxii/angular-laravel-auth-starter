@@ -1,13 +1,12 @@
 <main class="auth-shell">
   <section class="auth-card" aria-labelledby="login-title">
-    <div class="brand">Auth Starter</div>
     <h1 id="login-title">Welcome back</h1>
     <p class="subtitle">Sign in securely to continue.</p>
 
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <mat-form-field appearance="outline">
-        <mat-label>Email</mat-label>
-        <input matInput type="email" formControlName="email" autocomplete="email webauthn" />
+        <mat-label>Email or username</mat-label>
+        <input matInput type="text" formControlName="login" autocomplete="username webauthn" />
       </mat-form-field>
 
       <mat-form-field appearance="outline">

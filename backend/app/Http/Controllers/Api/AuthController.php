@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
 class AuthController
@@ -18,6 +19,7 @@ class AuthController
     {
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:100'], 'last_name' => ['required', 'string', 'max:100'],
+            'username' => ['required', 'string', 'min:3', 'max:30', 'regex:/^[A-Za-z0-9_]+$/', 'unique:users,username'],
             'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:12', 'max:128', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/', 'regex:/[^A-Za-z0-9]/', 'confirmed'],
             'terms_accepted' => ['required', 'accepted'],
@@ -26,6 +28,7 @@ class AuthController
         $user = DB::transaction(function () use ($validated): User {
             $user = User::create([
                 'first_name' => $validated['first_name'], 'last_name' => $validated['last_name'],
+                'username' => Str::lower($validated['username']),
                 'email' => strtolower($validated['email']), 'password' => $validated['password'],
             ]);
             $user->roles()->attach(Role::where('name', 'user')->firstOrFail());
@@ -38,8 +41,16 @@ class AuthController
 
     public function login(Request $request, AuthSessionManager $sessions): JsonResponse
     {
-        $credentials = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string']]);
-        $user = User::where('email', strtolower($credentials['email']))->first();
+        $credentials = $request->validate([
+            'login' => ['required_without:email', 'string', 'max:255'],
+            // Temporary compatibility for existing API consumers. New clients send login.
+            'email' => ['nullable', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+        $identifier = Str::lower(trim((string) ($credentials['login'] ?? $credentials['email'])));
+        $user = filter_var($identifier, FILTER_VALIDATE_EMAIL)
+            ? User::where('email', $identifier)->first()
+            : User::where('username', $identifier)->first();
         if (! $user || ! $user->is_active || ! password_verify($credentials['password'], $user->password)) {
             return response()->json(['message' => 'The provided credentials are invalid.'], 401);
         }

@@ -25,7 +25,7 @@ test.describe('passkeys', () => {
         isSecureContext: window.isSecureContext,
         publicKeyCredential: typeof window.PublicKeyCredential,
       }))).resolves.toEqual({ isSecureContext: true, publicKeyCredential: 'function' });
-      await page.getByLabel('Email').fill('admin@example.test');
+      await page.getByLabel('Email or username').fill('admin@example.test');
       await page.getByRole('textbox', { name: 'Password' }).fill('ChangeMe!123456');
       await page.getByRole('button', { name: 'Sign in', exact: true }).click();
       await expect(page).toHaveURL(/\/dashboard$/);

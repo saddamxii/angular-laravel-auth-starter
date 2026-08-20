@@ -21,7 +21,7 @@ class AuthenticationAuditMiddleware
                 $request->user('api')?->id ?? $request->user('web')?->id,
                 [
                     'status' => $response->getStatusCode(),
-                    'email' => $request->input('email'),
+                    'identifier' => $request->input('login') ?? $request->input('email'),
                 ],
                 $request,
             );

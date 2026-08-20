@@ -24,7 +24,7 @@ describe('AuthService', () => {
   afterEach(() => http.verify());
 
   it('stores the access token after login without persisting it to local storage', () => {
-    service.login({ email: 'user@example.test', password: 'StrongPassword!123' }).subscribe();
+    service.login({ login: 'user@example.test', password: 'StrongPassword!123' }).subscribe();
 
     const csrfRequest = http.expectOne('/api/auth/csrf-cookie');
     expect(csrfRequest.request.withCredentials).toBe(true);
@@ -42,6 +42,7 @@ describe('AuthService', () => {
         id: 1,
         first_name: 'Jane',
         last_name: 'Doe',
+        username: 'janedoe',
         email: 'user@example.test',
         email_verified_at: new Date().toISOString(),
         is_active: true,

@@ -57,4 +57,22 @@ class LoginTest extends TestCase
             ->assertJsonStructure(['access_token', 'expires_in', 'user']);
         $this->assertNotEmpty($response->headers->getCookies());
     }
+
+    public function test_verified_user_can_login_with_username(): void
+    {
+        $user = User::create([
+            'first_name' => 'Jane',
+            'last_name' => 'Doe',
+            'username' => 'jane_doe',
+            'email' => 'jane@example.test',
+            'password' => Hash::make('StrongPassword!123'),
+        ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
+        $user->roles()->attach(Role::where('name', 'user')->first());
+
+        $this->postJson('/api/auth/login', [
+            'login' => 'JANE_DOE',
+            'password' => 'StrongPassword!123',
+        ])->assertOk()->assertJsonPath('user.username', 'jane_doe');
+    }
 }
