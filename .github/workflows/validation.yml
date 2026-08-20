@@ -1,6 +1,7 @@
 name: Validation
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
   push:
@@ -13,6 +14,7 @@ jobs:
   backend:
     name: Backend tests
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Validate Compose
