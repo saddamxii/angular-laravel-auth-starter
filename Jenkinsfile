@@ -87,7 +87,29 @@ pipeline {
             steps {
                 // Use build-specific host ports so this isolated smoke stack can run
                 // alongside a developer's local stack on Docker Desktop.
-                sh 'MYSQL_PORT=$((50000 + BUILD_NUMBER)) FRONTEND_PORT=$((40000 + BUILD_NUMBER)) docker compose -f docker-compose.yml up -d --wait --wait-timeout 120'
+                sh '''
+                    set -eu
+                    export MYSQL_PORT=$((50000 + BUILD_NUMBER))
+                    export FRONTEND_PORT=$((40000 + BUILD_NUMBER))
+
+                    docker compose -f docker-compose.yml up -d mysql
+                    docker compose -f docker-compose.yml up -d backend
+
+                    for attempt in $(seq 1 30); do
+                        if docker compose -f docker-compose.yml exec -T backend php -r 'exit(@file_get_contents("http://127.0.0.1:8000/up") === false ? 1 : 0);'; then
+                            break
+                        fi
+
+                        if [ "$attempt" -eq 30 ]; then
+                            docker compose -f docker-compose.yml logs --no-color
+                            exit 1
+                        fi
+
+                        sleep 4
+                    done
+
+                    docker compose -f docker-compose.yml up -d frontend
+                '''
                 sh 'docker compose -f docker-compose.yml ps'
                 sh 'docker compose -f docker-compose.yml exec -T backend php artisan migrate:status'
                 sh 'docker compose -f docker-compose.yml exec -T frontend sh -c "wget -q -O - http://127.0.0.1/api/auth/csrf-cookie | grep -q token"'
