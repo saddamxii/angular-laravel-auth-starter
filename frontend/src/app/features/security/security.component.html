@@ -1,0 +1,46 @@
+<main class="security-page">
+  <section class="security-card">
+    <a routerLink="/dashboard">← Dashboard</a>
+    <h1>Security</h1>
+    <p>Add a passkey to use Face ID, Touch ID, fingerprint, Windows Hello, or another device authenticator.</p>
+
+    <mat-card appearance="outlined">
+      <mat-card-header><mat-card-title>Passkeys</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <mat-form-field appearance="outline">
+          <mat-label>Passkey name</mat-label>
+          <input matInput [value]="name()" (input)="name.set($any($event.target).value)" placeholder="My laptop" />
+        </mat-form-field>
+        <button mat-flat-button (click)="addPasskey()" [disabled]="!name().trim() || loading()">
+          {{ loading() ? 'Waiting for device…' : 'Add passkey' }}
+        </button>
+        <div class="items">
+          @for (passkey of passkeys(); track passkey.id) {
+            <div class="item">
+              <div><strong>{{ passkey.name }}</strong><small>{{ passkey.authenticator || 'Security authenticator' }}</small></div>
+              <button mat-stroked-button type="button" (click)="revokePasskey(passkey)" [disabled]="loading()">Remove</button>
+            </div>
+          } @empty { <p>No passkeys registered yet.</p> }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header><mat-card-title>Active sessions</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <button mat-stroked-button type="button" (click)="revokeAllSessions()" [disabled]="loading() || !sessions().length">Sign out all devices</button>
+        <div class="items">
+          @for (session of sessions(); track session.id) {
+            <div class="item">
+              <div><strong>{{ session.device_name || 'Unknown device' }}</strong><small>{{ session.ip_address || 'Unknown IP' }} · {{ session.last_used_at || session.created_at }}</small></div>
+              <button mat-stroked-button type="button" (click)="revokeSession(session)" [disabled]="loading()">Revoke</button>
+            </div>
+          } @empty { <p>No active sessions found.</p> }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    @if (message()) { <p role="status">{{ message() }}</p> }
+    @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
+  </section>
+</main>

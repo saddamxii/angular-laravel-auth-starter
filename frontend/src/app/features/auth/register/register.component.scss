@@ -1,0 +1,16 @@
+.auth-shell { min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: linear-gradient(135deg, #f7f9fc 0%, #eef3ff 100%); }
+.auth-card { width: min(100%, 560px); padding: clamp(28px, 6vw, 48px); border-radius: 24px; background: #fff; box-shadow: 0 24px 70px rgb(20 34 66 / 12%); }
+.auth-card > a { text-decoration: none; }
+h1 { margin: 28px 0 8px; }
+.subtitle { color: #687386; margin-bottom: 28px; }
+form { display: grid; gap: 14px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.primary-action { min-height: 50px; border-radius: 12px; }
+.error { color: #b42318; }
+.success { color: #067647; }
+
+@media (max-width: 560px) {
+  .two-col { grid-template-columns: 1fr; }
+  .auth-shell { padding: 12px; }
+  .auth-card { border-radius: 18px; }
+}

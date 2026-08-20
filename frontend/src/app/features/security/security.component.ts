@@ -12,63 +12,8 @@ import { AuthService, AuthSessionSummary, PasskeySummary } from '../../core/auth
   selector: 'app-security',
   standalone: true,
   imports: [RouterLink, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule],
-  template: `
-    <main class="security-page">
-      <section class="security-card">
-        <a routerLink="/dashboard">← Dashboard</a>
-        <h1>Security</h1>
-        <p>Add a passkey to use Face ID, Touch ID, fingerprint, Windows Hello, or another device authenticator.</p>
-
-        <mat-card appearance="outlined">
-          <mat-card-header><mat-card-title>Passkeys</mat-card-title></mat-card-header>
-          <mat-card-content>
-            <mat-form-field appearance="outline">
-              <mat-label>Passkey name</mat-label>
-              <input matInput [value]="name()" (input)="name.set($any($event.target).value)" placeholder="My laptop" />
-            </mat-form-field>
-            <button mat-flat-button (click)="addPasskey()" [disabled]="!name().trim() || loading()">
-              {{ loading() ? 'Waiting for device…' : 'Add passkey' }}
-            </button>
-            <div class="items">
-              @for (passkey of passkeys(); track passkey.id) {
-                <div class="item">
-                  <div><strong>{{ passkey.name }}</strong><small>{{ passkey.authenticator || 'Security authenticator' }}</small></div>
-                  <button mat-stroked-button type="button" (click)="revokePasskey(passkey)" [disabled]="loading()">Remove</button>
-                </div>
-              } @empty { <p>No passkeys registered yet.</p> }
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card appearance="outlined">
-          <mat-card-header><mat-card-title>Active sessions</mat-card-title></mat-card-header>
-          <mat-card-content>
-            <button mat-stroked-button type="button" (click)="revokeAllSessions()" [disabled]="loading() || !sessions().length">Sign out all devices</button>
-            <div class="items">
-              @for (session of sessions(); track session.id) {
-                <div class="item">
-                  <div><strong>{{ session.device_name || 'Unknown device' }}</strong><small>{{ session.ip_address || 'Unknown IP' }} · {{ session.last_used_at || session.created_at }}</small></div>
-                  <button mat-stroked-button type="button" (click)="revokeSession(session)" [disabled]="loading()">Revoke</button>
-                </div>
-              } @empty { <p>No active sessions found.</p> }
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        @if (message()) { <p role="status">{{ message() }}</p> }
-        @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-      </section>
-    </main>
-  `,
-  styles: `
-    .security-page { min-height:100dvh; display:grid; place-items:center; padding:24px; background:#f7f9fc; }
-    .security-card { width:min(100%,720px); padding:40px; background:#fff; border-radius:24px; box-shadow:0 24px 70px rgb(20 34 66 / 10%); display:grid; gap:20px; }
-    .security-card a { text-decoration:none; }.security-card h1 { margin:0; }
-    mat-card-content { display:grid; gap:16px; padding-top:16px; }.items { display:grid; gap:10px; }
-    .item { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:12px 0; border-top:1px solid #e8ebf0; }
-    .item div { display:grid; gap:4px; }.item small { opacity:.7; }.error { color:#b42318; }
-    @media (max-width:600px) { .security-card { padding:24px; }.item { align-items:flex-start; } }
-  `,
+  templateUrl: './security.component.html',
+  styleUrl: './security.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SecurityComponent implements OnInit {

@@ -10,18 +10,8 @@ import { AuthService } from '../../../core/auth/auth.service';
   selector: 'app-reset-password',
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule],
-  template: `
-    <main class="auth-shell"><section class="auth-card">
-      <a routerLink="/login">← Sign in</a><h1>Reset password</h1>
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <mat-form-field appearance="outline"><mat-label>New password</mat-label><input matInput type="password" formControlName="password" autocomplete="new-password" /></mat-form-field>
-        <mat-form-field appearance="outline"><mat-label>Confirm password</mat-label><input matInput type="password" formControlName="password_confirmation" autocomplete="new-password" /></mat-form-field>
-        @if (message()) { <p role="status">{{ message() }}</p> }
-        <button mat-flat-button type="submit" [disabled]="form.invalid || loading()">{{ loading() ? 'Resetting…' : 'Reset password' }}</button>
-      </form>
-    </section></main>
-  `,
-  styles: `.auth-shell{min-height:100dvh;display:grid;place-items:center;padding:24px;background:#f7f9fc}.auth-card{width:min(100%,440px);padding:40px;background:#fff;border-radius:24px;box-shadow:0 24px 70px rgb(20 34 66 / 10%)}.auth-card form{display:grid;gap:14px}.auth-card a{text-decoration:none}`,
+  templateUrl: './reset-password.component.html',
+  styleUrl: './reset-password.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ResetPasswordComponent {

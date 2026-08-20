@@ -1,0 +1,11 @@
+<main class="dashboard">
+  <div class="content">
+    <p class="eyebrow">Authenticated</p>
+    <h1>Welcome, {{ auth.user()?.first_name }}</h1>
+    <p>Your reusable authentication foundation is working.</p>
+    <div class="actions">
+      <a mat-stroked-button routerLink="/security">Security &amp; passkeys</a>
+      <button mat-flat-button (click)="logout()">Sign out</button>
+    </div>
+  </div>
+</main>
