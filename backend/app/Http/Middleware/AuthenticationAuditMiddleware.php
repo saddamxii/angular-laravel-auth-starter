@@ -9,8 +9,9 @@ use Symfony\Component\HttpFoundation\Response;
 
 class AuthenticationAuditMiddleware
 {
-    public function handle(Request $request, Closure $next, AuditLogger $audit): Response
+    public function handle(Request $request, Closure $next): Response
     {
+        $audit = app(AuditLogger::class);
         $response = $next($request);
         $event = $this->eventFor($request, $response);
 

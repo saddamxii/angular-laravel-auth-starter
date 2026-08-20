@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { authInterceptor } from './auth.interceptor';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
@@ -9,7 +10,11 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [AuthService, provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        AuthService,
+        provideHttpClient(withInterceptors([authInterceptor])),
+        provideHttpClientTesting(),
+      ],
     });
 
     service = TestBed.inject(AuthService);
@@ -21,7 +26,14 @@ describe('AuthService', () => {
   it('stores the access token after login without persisting it to local storage', () => {
     service.login({ email: 'user@example.test', password: 'StrongPassword!123' }).subscribe();
 
+    const csrfRequest = http.expectOne('/api/auth/csrf-cookie');
+    expect(csrfRequest.request.withCredentials).toBe(true);
+    csrfRequest.flush({ token: 'csrf-token' });
+    expect(document.head.querySelector('meta[name="csrf-token"]')?.getAttribute('content')).toBe('csrf-token');
+
     const request = http.expectOne('/api/auth/login');
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.headers.get('X-CSRF-TOKEN')).toBe('csrf-token');
     request.flush({
       access_token: 'access-token',
       token_type: 'Bearer',

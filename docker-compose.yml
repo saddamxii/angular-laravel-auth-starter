@@ -1,7 +1,6 @@
 services:
   mysql:
     image: mysql:8.4.10
-    container_name: auth_starter_mysql
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-auth_starter}
@@ -9,7 +8,7 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-me}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-me-root}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -24,14 +23,20 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: auth_starter_backend
     restart: unless-stopped
     environment:
+      APP_NAME: ${APP_NAME:-AngularLaravelAuthStarter}
       APP_ENV: ${APP_ENV:-local}
       APP_DEBUG: ${APP_DEBUG:-true}
       APP_KEY: ${APP_KEY:-}
       APP_URL: ${APP_URL:-http://localhost:4200}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:4200}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200}
+      SESSION_DOMAIN: ${SESSION_DOMAIN:-}
+      SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-false}
+      SESSION_SAME_SITE: ${SESSION_SAME_SITE:-lax}
       JWT_SECRET: ${JWT_SECRET:-change-me-development-jwt-secret}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
       JWT_TTL: ${JWT_TTL:-15}
       JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-20160}
       DB_CONNECTION: mysql
@@ -42,9 +47,18 @@ services:
       DB_PASSWORD: ${MYSQL_PASSWORD:-change-me}
       WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:-localhost}
       WEBAUTHN_ORIGIN: ${WEBAUTHN_ORIGIN:-http://localhost:4200}
+      PASSKEYS_USER_HANDLE_SECRET: ${PASSKEYS_USER_HANDLE_SECRET:-}
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@example.com}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Angular Laravel Auth Starter}
     depends_on:
       mysql:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1:8000/up\") === false ? 1 : 0);'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     networks:
       - auth_starter
 
@@ -52,12 +66,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: auth_starter_frontend
     restart: unless-stopped
     ports:
-      - "4200:80"
+      - "${FRONTEND_PORT:-4200}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - auth_starter
 

@@ -1,13 +1,11 @@
 server {
-    listen 80;
-    server_name _;
+    listen 443 ssl;
+    server_name frontend.test;
     root /usr/share/nginx/html;
     index index.html;
 
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    ssl_certificate /etc/nginx/test-certs/frontend.test.crt;
+    ssl_certificate_key /etc/nginx/test-certs/frontend.test.key;
 
     location / {
         try_files $uri $uri/ /index.html;

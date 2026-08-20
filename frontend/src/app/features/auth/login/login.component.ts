@@ -97,12 +97,13 @@ export class LoginComponent {
     this.loading.set(true);
 
     try {
+      await firstValueFrom(this.auth.initializeCsrf());
       await Passkeys.verify();
       const restored = await firstValueFrom(this.auth.restoreSession());
       if (!restored) throw new Error('Passkey authentication did not create a valid application session.');
       await this.router.navigateByUrl('/dashboard');
-    } catch {
-      this.errorMessage.set('Passkey authentication was cancelled or is unavailable on this device.');
+    } catch (error: unknown) {
+      this.errorMessage.set(error instanceof Error ? error.message : 'Passkey authentication was cancelled or is unavailable on this device.');
     } finally {
       this.loading.set(false);
     }

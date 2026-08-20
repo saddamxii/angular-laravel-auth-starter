@@ -60,10 +60,10 @@ class DatabaseSeeder extends Seeder
                     'first_name' => 'System',
                     'last_name' => 'Administrator',
                     'password' => Hash::make('ChangeMe!123456'),
-                    'email_verified_at' => now(),
                     'is_active' => true,
                 ]
             );
+            $admin->forceFill(['email_verified_at' => now()])->save();
 
             $admin->roles()->syncWithoutDetaching([
                 Role::where('name', 'admin')->value('id'),

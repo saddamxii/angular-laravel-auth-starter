@@ -10,6 +10,8 @@ pipeline {
     environment {
         COMPOSE_DOCKER_CLI_BUILD = '1'
         DOCKER_BUILDKIT = '1'
+        CI = 'true'
+        COMPOSE_PROJECT_NAME = "auth-starter-ci-${BUILD_NUMBER}"
     }
 
     stages {
@@ -24,6 +26,7 @@ pipeline {
                 sh 'docker compose -f docker-compose.yml config'
                 sh 'docker compose -f docker-compose.test.yml config'
                 sh 'docker compose -f docker-compose.frontend-test.yml config'
+                sh 'docker compose -f docker-compose.passkey-test.yml config'
             }
         }
 
@@ -40,7 +43,7 @@ pipeline {
 
         stage('Frontend Tests') {
             steps {
-                sh 'docker compose -f docker-compose.frontend-test.yml run --rm frontend-test'
+                sh 'docker compose -f docker-compose.frontend-test.yml up --build --abort-on-container-exit --exit-code-from frontend-test'
             }
             post {
                 always {
@@ -51,10 +54,26 @@ pipeline {
             }
         }
 
+        stage('Passkey Integration Tests') {
+            steps {
+                sh 'docker compose -p "${COMPOSE_PROJECT_NAME}-passkey" -f docker-compose.passkey-test.yml up --build --abort-on-container-exit --exit-code-from passkey-test'
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'frontend/test-results/**/*.xml'
+                    archiveArtifacts allowEmptyArchive: true, artifacts: 'frontend/playwright-report/**,frontend/test-results/**'
+                    sh 'docker compose -p "${COMPOSE_PROJECT_NAME}-passkey" -f docker-compose.passkey-test.yml down -v --remove-orphans || true'
+                }
+            }
+        }
+
         stage('Security Audit') {
             steps {
-                sh 'docker run --rm -v "$PWD/backend:/app" -w /app composer:2 composer audit --no-interaction || true'
-                sh 'docker run --rm -v "$PWD/frontend:/app" -w /app node:22.22.3-bookworm sh -c "npm install --package-lock-only --ignore-scripts --no-audit --no-fund && npm audit --audit-level=high"'
+                // The Jenkins controller runs in a container. Bind mounting $PWD into
+                // a sibling Docker container resolves on the Docker host, not inside
+                // Jenkins, so run audits in the images that already contain the source.
+                sh 'docker compose -f docker-compose.test.yml run --rm --no-deps backend-test composer audit --no-interaction'
+                sh 'docker compose -f docker-compose.frontend-test.yml run --rm --no-deps frontend-test sh -c "npm install --package-lock-only --ignore-scripts --no-audit --no-fund && npm audit --audit-level=high"'
             }
         }
 
@@ -66,10 +85,34 @@ pipeline {
 
         stage('Docker Smoke Test') {
             steps {
-                sh 'docker compose -f docker-compose.yml up -d'
-                sh 'sleep 10'
+                // Use build-specific host ports so this isolated smoke stack can run
+                // alongside a developer's local stack on Docker Desktop.
+                sh '''
+                    set -eu
+                    export MYSQL_PORT=$((50000 + BUILD_NUMBER))
+                    export FRONTEND_PORT=$((40000 + BUILD_NUMBER))
+
+                    docker compose -f docker-compose.yml up -d mysql
+                    docker compose -f docker-compose.yml up -d backend
+
+                    for attempt in $(seq 1 30); do
+                        if docker compose -f docker-compose.yml exec -T backend php -r 'exit(@file_get_contents("http://127.0.0.1:8000/up") === false ? 1 : 0);'; then
+                            break
+                        fi
+
+                        if [ "$attempt" -eq 30 ]; then
+                            docker compose -f docker-compose.yml logs --no-color
+                            exit 1
+                        fi
+
+                        sleep 4
+                    done
+
+                    docker compose -f docker-compose.yml up -d frontend
+                '''
                 sh 'docker compose -f docker-compose.yml ps'
-                sh 'docker inspect --format="{{.State.Health.Status}}" auth_starter_frontend || true'
+                sh 'docker compose -f docker-compose.yml exec -T backend php artisan migrate:status'
+                sh 'docker compose -f docker-compose.yml exec -T frontend sh -c "wget -q -O - http://127.0.0.1/api/auth/csrf-cookie | grep -q token"'
             }
         }
     }
@@ -77,7 +120,6 @@ pipeline {
     post {
         always {
             sh 'docker compose -f docker-compose.yml down -v --remove-orphans || true'
-            sh 'docker system prune -f || true'
         }
         success {
             echo 'Authentication starter CI pipeline completed successfully.'
