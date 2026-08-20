@@ -85,7 +85,9 @@ pipeline {
 
         stage('Docker Smoke Test') {
             steps {
-                sh 'docker compose -f docker-compose.yml up -d --wait --wait-timeout 120'
+                // Use build-specific host ports so this isolated smoke stack can run
+                // alongside a developer's local stack on Docker Desktop.
+                sh 'MYSQL_PORT=$((50000 + BUILD_NUMBER)) FRONTEND_PORT=$((40000 + BUILD_NUMBER)) docker compose -f docker-compose.yml up -d --wait --wait-timeout 120'
                 sh 'docker compose -f docker-compose.yml ps'
                 sh 'docker compose -f docker-compose.yml exec -T backend php artisan migrate:status'
                 sh 'docker compose -f docker-compose.yml exec -T frontend sh -c "wget -q -O - http://127.0.0.1/api/auth/csrf-cookie | grep -q token"'
