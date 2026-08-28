@@ -49,7 +49,7 @@ same-origin proxy, CSRF protection, session cookie, and password login:
 ```powershell
 $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $csrf = (Invoke-RestMethod -WebSession $session -Uri 'http://localhost:4200/api/auth/csrf-cookie').token
-$login = Invoke-RestMethod -Method POST -WebSession $session -Uri 'http://localhost:4200/api/auth/login' -Headers @{ 'X-CSRF-TOKEN' = $csrf } -ContentType 'application/json' -Body '{"email":"admin@example.test","password":"ChangeMe!123456"}'
+$login = Invoke-RestMethod -Method POST -WebSession $session -Uri 'http://localhost:4200/api/auth/login' -Headers @{ 'X-CSRF-TOKEN' = $csrf } -ContentType 'application/json' -Body '{"email":"admin@example.test","password":"Admin@admin.11"}'
 $login.user.email
 ```
 
