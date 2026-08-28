@@ -1,26 +1,41 @@
 <main class="auth-shell">
-  <section class="auth-card" aria-labelledby="register-title">
-    <a routerLink="/login">← Sign in</a>
-    <h1 id="register-title">Create your account</h1>
-    <p class="subtitle">Secure access starts here.</p>
-
-    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      <div class="two-col">
-        <mat-form-field appearance="outline"><mat-label>First name</mat-label><input matInput formControlName="first_name" autocomplete="given-name" /></mat-form-field>
-        <mat-form-field appearance="outline"><mat-label>Last name</mat-label><input matInput formControlName="last_name" autocomplete="family-name" /></mat-form-field>
+  <div class="auth-panel">
+    <aside class="welcome-panel" aria-label="Account creation information">
+      <a class="brand" routerLink="/login"><app-brand-identity /></a>
+      <div class="welcome-copy">
+        <p class="eyebrow">Create your workspace</p>
+        <h2>Secure access begins with a verified account.</h2>
+        <p>Create your profile in a few moments. You will receive an e-mail to verify your account.</p>
       </div>
-      <mat-form-field appearance="outline"><mat-label>Username</mat-label><input matInput formControlName="username" autocomplete="username" /></mat-form-field>
-      <mat-form-field appearance="outline"><mat-label>Email</mat-label><input matInput type="email" formControlName="email" autocomplete="email" /></mat-form-field>
-      <mat-form-field appearance="outline"><mat-label>Password</mat-label><input matInput type="password" formControlName="password" autocomplete="new-password" /></mat-form-field>
-      <mat-form-field appearance="outline"><mat-label>Confirm password</mat-label><input matInput type="password" formControlName="password_confirmation" autocomplete="new-password" /></mat-form-field>
-      <mat-checkbox formControlName="terms_accepted">I accept the terms and conditions.</mat-checkbox>
+      <ul class="benefits">
+        <li><mat-icon>mail_outline</mat-icon><span>Verified e-mail identity</span></li>
+        <li><mat-icon>lock_outline</mat-icon><span>Strong password protection</span></li>
+        <li><mat-icon>fingerprint</mat-icon><span>Add a passkey after sign-in</span></li>
+      </ul>
+    </aside>
 
-      @if (errorMessage()) { <p class="error" role="alert">{{ errorMessage() }}</p> }
-      @if (successMessage()) { <p class="success" role="status">{{ successMessage() }}</p> }
+    <section class="auth-card" aria-labelledby="register-title">
+      <a class="back-link" routerLink="/login"><mat-icon>arrow_back</mat-icon> {{ i18n.t('auth.back_to_sign_in') }}</a>
+      <header><p class="eyebrow">New account</p><h1 id="register-title">{{ i18n.t('auth.create_account') }}</h1><p class="subtitle">Complete the details below to get started.</p></header>
 
-      <button mat-flat-button class="primary-action" type="submit" [disabled]="form.invalid || loading()">
-        {{ loading() ? 'Creating account…' : 'Create account' }}
-      </button>
-    </form>
-  </section>
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="two-col">
+          <mat-form-field appearance="outline" floatLabel="always"><mat-label>First name</mat-label><mat-icon matPrefix>person_outline</mat-icon><input matInput formControlName="first_name" autocomplete="given-name" /></mat-form-field>
+          <mat-form-field appearance="outline" floatLabel="always"><mat-label>Last name</mat-label><mat-icon matPrefix>badge</mat-icon><input matInput formControlName="last_name" autocomplete="family-name" /></mat-form-field>
+        </div>
+        <mat-form-field appearance="outline" floatLabel="always"><mat-label>Username</mat-label><mat-icon matPrefix>alternate_email</mat-icon><input matInput formControlName="username" autocomplete="username" /><mat-hint>3–30 letters, numbers, or underscores</mat-hint></mat-form-field>
+        <mat-form-field appearance="outline" floatLabel="always"><mat-label>{{ i18n.t('auth.email_address') }}</mat-label><mat-icon matPrefix>mail_outline</mat-icon><input matInput type="email" formControlName="email" autocomplete="email" /></mat-form-field>
+        <div class="two-col">
+          <mat-form-field appearance="outline" floatLabel="always"><mat-label>{{ i18n.t('auth.password') }}</mat-label><mat-icon matPrefix>lock_outline</mat-icon><input matInput type="password" formControlName="password" autocomplete="new-password" /></mat-form-field>
+          <mat-form-field appearance="outline" floatLabel="always"><mat-label>{{ i18n.t('auth.confirm_password') }}</mat-label><mat-icon matPrefix>lock_reset</mat-icon><input matInput type="password" formControlName="password_confirmation" autocomplete="new-password" /></mat-form-field>
+        </div>
+        <p class="password-hint"><mat-icon>info_outline</mat-icon> Use at least 12 characters, with upper/lowercase letters, a number and a symbol.</p>
+        <mat-checkbox formControlName="terms_accepted">I accept the terms and conditions.</mat-checkbox>
+        @if (errorMessage()) { <p class="notice error" role="alert"><mat-icon>error_outline</mat-icon>{{ errorMessage() }}</p> }
+        @if (successMessage()) { <p class="notice success" role="status"><mat-icon>check_circle_outline</mat-icon>{{ successMessage() }}</p> }
+        <button mat-flat-button class="primary-action" type="submit" [disabled]="form.invalid || loading()">{{ loading() ? 'Creating account…' : 'Create account' }} <mat-icon>arrow_forward</mat-icon></button>
+      </form>
+      <p class="footer-text">Already have an account? <a routerLink="/login">Sign in</a></p>
+    </section>
+  </div>
 </main>

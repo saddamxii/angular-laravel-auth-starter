@@ -4,12 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Notifications\EmailChangeRequested;
+use App\Notifications\VerifyPendingEmailChange;
+use App\Services\AuditLogger;
 use App\Services\AuthSessionManager;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
@@ -25,11 +31,12 @@ class AuthController
             'terms_accepted' => ['required', 'accepted'],
         ]);
 
-        $user = DB::transaction(function () use ($validated): User {
+        $locale = in_array(App::currentLocale(), ['en', 'fr', 'es'], true) ? App::currentLocale() : 'en';
+        $user = DB::transaction(function () use ($validated, $locale): User {
             $user = User::create([
                 'first_name' => $validated['first_name'], 'last_name' => $validated['last_name'],
                 'username' => Str::lower($validated['username']),
-                'email' => strtolower($validated['email']), 'password' => $validated['password'],
+                'email' => strtolower($validated['email']), 'password' => $validated['password'], 'locale' => $locale,
             ]);
             $user->roles()->attach(Role::where('name', 'user')->firstOrFail());
             return $user;
@@ -57,8 +64,8 @@ class AuthController
         if (! $user->hasVerifiedEmail()) return response()->json(['message' => 'Please verify your email address before signing in.'], 403);
 
         auth('web')->login($user);
-        $token = auth('api')->claims(['token_type' => 'access'])->setTTL((int) config('jwt.ttl'))->login($user);
-        $refreshToken = auth('api')->claims(['token_type' => 'refresh'])->setTTL((int) config('jwt.refresh_ttl'))->login($user);
+        $token = auth('api')->claims(['token_type' => 'access', 'auth_version' => $user->auth_version])->setTTL((int) config('jwt.ttl'))->login($user);
+        $refreshToken = auth('api')->claims(['token_type' => 'refresh', 'auth_version' => $user->auth_version])->setTTL((int) config('jwt.refresh_ttl'))->login($user);
         $sessions->record($user, $refreshToken, $request);
         return $this->tokenResponse($user, $token, $refreshToken);
     }
@@ -72,13 +79,13 @@ class AuthController
             $payload = JWTAuth::setToken($refreshToken)->getPayload();
             if ($payload->get('token_type') !== 'refresh') return response()->json(['message' => 'Invalid refresh token.'], 401);
             $user = User::find($payload->get('sub'));
-            if (! $user || ! $user->is_active || ! $sessions->isActive($refreshToken, $user->id)) {
+            if (! $user || ! $user->is_active || (int) $payload->get('auth_version') !== (int) $user->auth_version || ! $sessions->isActive($refreshToken, $user->id)) {
                 return response()->json(['message' => 'Refresh session has been revoked or is invalid.'], 401);
             }
 
             auth('web')->login($user);
-            $accessToken = auth('api')->claims(['token_type' => 'access'])->setTTL((int) config('jwt.ttl'))->login($user);
-            $newRefreshToken = auth('api')->claims(['token_type' => 'refresh'])->setTTL((int) config('jwt.refresh_ttl'))->login($user);
+            $accessToken = auth('api')->claims(['token_type' => 'access', 'auth_version' => $user->auth_version])->setTTL((int) config('jwt.ttl'))->login($user);
+            $newRefreshToken = auth('api')->claims(['token_type' => 'refresh', 'auth_version' => $user->auth_version])->setTTL((int) config('jwt.refresh_ttl'))->login($user);
             $sessions->revokeByRefreshToken($refreshToken);
             $sessions->record($user, $newRefreshToken, $request);
             JWTAuth::setToken($refreshToken)->invalidate(true);
@@ -116,12 +123,12 @@ class AuthController
         return redirect()->to('/reset-password?token='.urlencode($token).'&email='.urlencode($email));
     }
 
-    public function verifyEmail(Request $request, int $id, string $hash): JsonResponse
+    public function verifyEmail(Request $request, int $id, string $hash): mixed
     {
         $user = User::findOrFail($id);
         if (! hash_equals($hash, sha1($user->getEmailForVerification()))) abort(403, 'Invalid verification link.');
         if (! $user->hasVerifiedEmail() && $user->markEmailAsVerified()) event(new \Illuminate\Auth\Events\Verified($user));
-        return response()->json(['message' => 'Email address verified successfully.']);
+        return redirect()->to(rtrim((string) config('app.frontend_url'), '/').'/login?verified=1');
     }
 
     public function resendVerification(Request $request): JsonResponse
@@ -130,6 +137,115 @@ class AuthController
         $user = User::where('email', strtolower($validated['email']))->first();
         if ($user && ! $user->hasVerifiedEmail() && $user->is_active) $user->sendEmailVerificationNotification();
         return response()->json(['message' => 'If the account exists and requires verification, a verification email has been sent.']);
+    }
+
+    public function changePassword(Request $request, AuthSessionManager $sessions, AuditLogger $audit): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:12', 'max:128', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/', 'regex:/[^A-Za-z0-9]/', 'confirmed'],
+        ]);
+
+        /** @var User $user */
+        $user = $request->user();
+
+        if (! Hash::check($validated['current_password'], $user->password)) {
+            return response()->json(['message' => 'The current password is incorrect.'], 422);
+        }
+        if (Hash::check($validated['password'], $user->password)) {
+            return response()->json(['message' => 'Choose a password different from your current password.'], 422);
+        }
+
+        DB::transaction(function () use ($user, $validated, $sessions): void {
+            $user->forceFill([
+                'password' => $validated['password'],
+                'auth_version' => $user->auth_version + 1,
+            ])->save();
+            $sessions->revokeAll($user);
+        });
+
+        $user->refresh();
+        auth('web')->login($user);
+        $accessToken = auth('api')->claims(['token_type' => 'access', 'auth_version' => $user->auth_version])->setTTL((int) config('jwt.ttl'))->login($user);
+        $refreshToken = auth('api')->claims(['token_type' => 'refresh', 'auth_version' => $user->auth_version])->setTTL((int) config('jwt.refresh_ttl'))->login($user);
+        $sessions->record($user, $refreshToken, $request);
+        $audit->log('auth.password_changed', $user->id, ['other_sessions_revoked' => true], $request);
+
+        return $this->tokenResponse($user, $accessToken, $refreshToken);
+    }
+
+    public function requestEmailChange(Request $request, AuditLogger $audit): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email'],
+        ]);
+
+        /** @var User $user */
+        $user = $request->user();
+        $newEmail = strtolower($validated['email']);
+
+        if (! Hash::check($validated['current_password'], $user->password)) {
+            return response()->json(['message' => 'The current password is incorrect.'], 422);
+        }
+        if ($newEmail === $user->email) {
+            return response()->json(['message' => 'Choose an email address different from your current email.'], 422);
+        }
+        if (User::query()->where('pending_email', $newEmail)->where('id', '!=', $user->id)->exists()) {
+            return response()->json(['message' => 'This email address is already awaiting verification.'], 422);
+        }
+
+        $plainToken = Str::random(64);
+        $expiresAt = now()->addHour();
+        $user->forceFill([
+            'pending_email' => $newEmail,
+            'pending_email_change_token' => hash('sha256', $plainToken),
+            'pending_email_change_expires_at' => $expiresAt,
+        ])->save();
+
+        $verificationUrl = URL::temporarySignedRoute('profile.email.verify', $expiresAt, [
+            'user' => $user->id,
+            'token' => $plainToken,
+        ]);
+        $user->notify(new EmailChangeRequested($newEmail));
+        $user->notify(new VerifyPendingEmailChange($newEmail, $verificationUrl));
+        $audit->log('auth.email_change_requested', $user->id, ['new_email_domain' => Str::afterLast($newEmail, '@')], $request);
+
+        return response()->json(['message' => 'Verification instructions have been sent to your new email address.']);
+    }
+
+    public function updateLocale(Request $request): JsonResponse
+    {
+        $validated = $request->validate(['locale' => ['required', 'in:en,fr,es']]);
+        /** @var User $user */
+        $user = $request->user();
+        $user->update(['locale' => $validated['locale']]);
+
+        return response()->json(['user' => $user->fresh()->load('roles.permissions')]);
+    }
+
+    public function verifyPendingEmailChange(Request $request, User $user, string $token, AuthSessionManager $sessions, AuditLogger $audit): mixed
+    {
+        $tokenMatches = $user->pending_email_change_token !== null
+            && hash_equals($user->pending_email_change_token, hash('sha256', $token));
+        abort_unless($user->pending_email && $user->pending_email_change_expires_at?->isFuture() && $tokenMatches, 403, 'Invalid or expired email change link.');
+
+        $newEmail = $user->pending_email;
+        DB::transaction(function () use ($user, $newEmail, $sessions): void {
+            $user->forceFill([
+                'email' => $newEmail,
+                'email_verified_at' => now(),
+                'pending_email' => null,
+                'pending_email_change_token' => null,
+                'pending_email_change_expires_at' => null,
+                'auth_version' => $user->auth_version + 1,
+            ])->save();
+            $sessions->revokeAll($user);
+        });
+
+        $audit->log('auth.email_changed', $user->id, ['new_email_domain' => Str::afterLast($newEmail, '@')], $request);
+
+        return redirect()->to(rtrim((string) config('app.frontend_url'), '/').'/login?email_changed=1');
     }
 
     public function logout(Request $request, AuthSessionManager $sessions): JsonResponse

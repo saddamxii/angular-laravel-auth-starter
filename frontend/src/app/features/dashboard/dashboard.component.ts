@@ -1,21 +1,16 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
-import { AuthService } from '../../core/auth/auth.service';
+import { AppSidebarComponent } from '../../core/layout/app-sidebar.component';
+import { SidebarStateService } from '../../core/layout/sidebar-state.service';
+import { AppTopbarComponent } from '../../core/layout/app-topbar.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [MatButtonModule, RouterLink],
+  imports: [AppSidebarComponent, AppTopbarComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent {
-  readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
-
-  logout(): void {
-    this.auth.logout().subscribe(() => this.router.navigateByUrl('/login'));
-  }
+  readonly sidebar = inject(SidebarStateService);
 }

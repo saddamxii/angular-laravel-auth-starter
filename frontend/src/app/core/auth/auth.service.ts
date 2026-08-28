@@ -4,6 +4,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, of, shareReplay, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, User } from './auth.models';
+import { TranslationService, type AppLocale } from '../i18n/translation.service';
 
 export interface PasskeySummary {
   id: number;
@@ -26,6 +27,7 @@ export interface AuthSessionSummary {
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly document = inject(DOCUMENT);
+  private readonly i18n = inject(TranslationService);
   private readonly accessToken = signal<string | null>(null);
   private readonly currentUser = signal<User | null>(null);
   private csrfToken: string | null = null;
@@ -51,6 +53,37 @@ export class AuthService {
 
   resetPassword(payload: { token: string; email: string; password: string; password_confirmation: string }): Observable<{ message: string }> {
     return this.withCsrf(() => this.http.post<{ message: string }>(`${environment.apiUrl}/auth/password/reset`, payload, { withCredentials: true }));
+  }
+
+  changePassword(payload: { current_password: string; password: string; password_confirmation: string }): Observable<AuthResponse> {
+    return this.withCsrf(() => this.http.put<AuthResponse>(`${environment.apiUrl}/profile/password`, payload, { withCredentials: true })).pipe(
+      tap((response) => this.applyAuthentication(response)),
+    );
+  }
+
+  requestEmailChange(payload: { current_password: string; email: string }): Observable<{ message: string }> {
+    return this.withCsrf(() => this.http.put<{ message: string }>(`${environment.apiUrl}/profile/email`, payload, { withCredentials: true }));
+  }
+
+  updateLocale(locale: AppLocale): Observable<{ user: User }> {
+    return this.withCsrf(() => this.http.put<{ user: User }>(`${environment.apiUrl}/profile/locale`, { locale }, { withCredentials: true })).pipe(
+      tap((response) => this.currentUser.set(response.user)),
+    );
+  }
+
+  updateProfile(payload: { first_name: string; last_name: string; username: string; preferences: { email_notifications: boolean } }): Observable<{ user: User }> {
+    return this.withCsrf(() => this.http.put<{ user: User }>(`${environment.apiUrl}/profile`, payload, { withCredentials: true })).pipe(tap((response) => this.currentUser.set(response.user)));
+  }
+
+  uploadAvatar(file: File): Observable<{ user: User }> {
+    const data = new FormData(); data.append('avatar', file);
+    return this.withCsrf(() => this.http.post<{ user: User }>(`${environment.apiUrl}/profile/avatar`, data, { withCredentials: true })).pipe(tap((response) => this.currentUser.set(response.user)));
+  }
+
+  exportProfile(): Observable<Record<string, unknown>> { return this.http.get<Record<string, unknown>>(`${environment.apiUrl}/profile/export`); }
+
+  deleteProfile(payload: { current_password: string; confirmation: 'DELETE' }): Observable<{ message: string }> {
+    return this.withCsrf(() => this.http.delete<{ message: string }>(`${environment.apiUrl}/profile`, { body: payload, withCredentials: true }));
   }
 
   listPasskeys(): Observable<{ passkeys: PasskeySummary[] }> {
@@ -137,7 +170,10 @@ export class AuthService {
 
   private applyAuthentication(response: AuthResponse): void {
     this.accessToken.set(response.access_token);
-    if (response.user) this.currentUser.set(response.user);
+    if (response.user) {
+      this.currentUser.set(response.user);
+      this.i18n.setLocale(response.user.locale);
+    }
   }
 
   private clearAuthentication(): void {

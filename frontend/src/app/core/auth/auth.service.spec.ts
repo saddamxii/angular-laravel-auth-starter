@@ -46,6 +46,7 @@ describe('AuthService', () => {
         email: 'user@example.test',
         email_verified_at: new Date().toISOString(),
         is_active: true,
+        locale: 'en',
         roles: [{ id: 4, name: 'user', display_name: 'User', permissions: [] }],
       },
     });

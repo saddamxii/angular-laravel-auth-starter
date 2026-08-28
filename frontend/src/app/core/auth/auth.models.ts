@@ -21,6 +21,9 @@ export interface User {
   email: string;
   email_verified_at: string | null;
   is_active: boolean;
+  locale: 'en' | 'fr' | 'es';
+  avatar_url?: string | null;
+  profile_preferences?: { email_notifications?: boolean } | null;
   roles: Role[];
 }
 

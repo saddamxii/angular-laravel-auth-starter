@@ -54,21 +54,35 @@ class DatabaseSeeder extends Seeder
         }
 
         if (app()->environment(['local', 'testing'])) {
-            $admin = User::firstOrCreate(
-                ['email' => 'admin@example.test'],
-                [
-                    'first_name' => 'System',
-                    'last_name' => 'Administrator',
-                    'username' => 'admin',
-                    'password' => Hash::make('ChangeMe!123456'),
-                    'is_active' => true,
-                ]
-            );
-            $admin->forceFill(['username' => $admin->username ?? 'admin', 'email_verified_at' => now()])->save();
+            $demoUsers = [
+                ['role' => 'admin', 'first_name' => 'Admin', 'last_name' => 'User', 'email' => 'admin@example.test', 'username' => 'admin', 'password' => 'Admin@admin.11'],
+                ['role' => 'manager', 'first_name' => 'Manager', 'last_name' => 'User', 'email' => 'manager@example.test', 'username' => 'manager', 'password' => 'Manager@manager.11'],
+                ['role' => 'editor', 'first_name' => 'Editor', 'last_name' => 'User', 'email' => 'editor@example.test', 'username' => 'editor', 'password' => 'Editor@editor.11'],
+                ['role' => 'user', 'first_name' => 'User', 'last_name' => 'User', 'email' => 'user@example.test', 'username' => 'user', 'password' => 'User@user.11'],
+            ];
 
-            $admin->roles()->syncWithoutDetaching([
-                Role::where('name', 'admin')->value('id'),
-            ]);
+            foreach ($demoUsers as $demoUser) {
+                $user = User::firstOrCreate(
+                    ['email' => $demoUser['email']],
+                    [
+                        'first_name' => $demoUser['first_name'],
+                        'last_name' => $demoUser['last_name'],
+                        'username' => $demoUser['username'],
+                        'password' => Hash::make($demoUser['password']),
+                        'is_active' => true,
+                    ]
+                );
+
+                $user->forceFill([
+                    'username' => $user->username ?? $demoUser['username'],
+                    'password' => Hash::make($demoUser['password']),
+                    'is_active' => true,
+                    'email_verified_at' => now(),
+                ])->save();
+                $user->roles()->syncWithoutDetaching([
+                    Role::where('name', $demoUser['role'])->value('id'),
+                ]);
+            }
         }
     }
 }

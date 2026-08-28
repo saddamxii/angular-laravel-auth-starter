@@ -19,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => App\Http\Middleware\PermissionMiddleware::class,
             'access.token' => App\Http\Middleware\EnsureAccessToken::class,
             'auth.audit' => App\Http\Middleware\AuthenticationAuditMiddleware::class,
+            'canonical.signed' => App\Http\Middleware\ValidateCanonicalSignature::class,
+            'locale' => App\Http\Middleware\SetRequestLocale::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

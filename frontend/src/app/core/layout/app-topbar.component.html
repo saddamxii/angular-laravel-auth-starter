@@ -1,0 +1,7 @@
+<header class="app-topbar" [class.sidebar-collapsed]="sidebar.collapsed()" aria-label="Application controls">
+  <div class="topbar-actions">
+    <app-language-selector />
+    <button mat-icon-button type="button" class="topbar-icon-button" (click)="theme.toggle()" [attr.aria-label]="theme.theme() === 'dark' ? 'Use light theme' : 'Use dark theme'" [attr.title]="theme.theme() === 'dark' ? 'Use light theme' : 'Use dark theme'"><mat-icon>{{ theme.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon></button>
+    <a routerLink="/settings/profile" class="topbar-profile" aria-label="Open my profile">@if (auth.user()?.avatar_url) { <img [src]="auth.user()?.avatar_url" alt="Profile photo" /> } @else { <span>{{ auth.user()?.first_name?.slice(0, 1) }}{{ auth.user()?.last_name?.slice(0, 1) }}</span> }</a>
+  </div>
+</header>

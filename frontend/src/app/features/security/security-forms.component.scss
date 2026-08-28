@@ -1,0 +1,11 @@
+.credential-card { overflow: hidden; border-color: #e4e9f2; }
+.credential-card mat-card-content { padding: 30px; }
+.credential-heading { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 14px; align-items: start; margin-bottom: 25px; }
+.credential-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; }.credential-icon mat-icon { font-size: 23px; }
+.credential-icon.violet { color: #6752ad; background: #f0ecff; }.credential-icon.coral { color: #b05063; background: #ffedf1; }.credential-icon.ocean { color: #276fae; background: #e7f2fc; }
+.card-kicker { margin: 0 0 3px !important; color: #77859a !important; font-size: .68rem !important; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.credential-heading h2 { margin-bottom: 5px; font-size: 1.2rem; }.credential-heading p:not(.card-kicker) { margin: 0; color: #6e7e94; font-size: .86rem; line-height: 1.5; }
+.credential-form { display: grid; gap: 7px; }.credential-form mat-form-field { width: 100%; }.credential-form mat-icon[matPrefix] { margin-right: 10px; color: #8290a5; }.credential-form button[mat-icon-button] { color: #73839a; }.credential-form button[mat-icon-button]:hover { color: #2867a5; background: #edf5fd; }
+.requirement-note { display: flex; align-items: flex-start; gap: 8px; margin: 2px 0 8px; padding: 12px; border: 1px solid #dce9f6; border-radius: 10px; color: #526f8d; background: #f5f9fd; font-size: .78rem; line-height: 1.5; }.requirement-note mat-icon { flex: 0 0 auto; color: #3979b8; font-size: 18px; }.email-note { border-color: #f3dce3; color: #805665; background: #fff7f9; }.email-note mat-icon { color: #be6073; }
+.credential-submit { justify-self: stretch; min-height: 48px; margin-top: 1px; border-radius: 10px; font-weight: 750; }.credential-submit mat-icon { margin-right: 7px; font-size: 19px; }
+@media (max-width: 560px) { .credential-card mat-card-content { padding: 22px; }.credential-heading { grid-template-columns: 40px minmax(0, 1fr); gap: 11px; }.credential-icon { width: 40px; height: 40px; border-radius: 12px; } }

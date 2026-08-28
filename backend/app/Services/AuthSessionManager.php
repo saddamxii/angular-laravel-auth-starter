@@ -60,6 +60,14 @@ class AuthSessionManager
         }
     }
 
+    public function revokeAll(User $user): void
+    {
+        AuthSession::query()
+            ->where('user_id', $user->id)
+            ->whereNull('revoked_at')
+            ->update(['revoked_at' => now()]);
+    }
+
     private function deviceName(Request $request): string
     {
         $userAgent = (string) $request->userAgent();

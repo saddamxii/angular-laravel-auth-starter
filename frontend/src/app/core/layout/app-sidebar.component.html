@@ -1,0 +1,38 @@
+<button type="button" class="mobile-trigger" (click)="toggleMobile()" aria-label="Open navigation"><mat-icon>menu</mat-icon></button>
+@if (mobileOpen()) { <button type="button" class="mobile-backdrop" (click)="closeMobile()" aria-label="Close navigation"></button> }
+<aside class="app-sidebar" [class.collapsed]="sidebar.collapsed()" [class.mobile-open]="mobileOpen()" aria-label="Main navigation">
+  <header class="sidebar-header">
+    <a class="brand" routerLink="/dashboard" (click)="closeMobile()"><app-brand-identity /></a>
+    <button type="button" class="collapse-trigger" (click)="toggle()" [attr.aria-label]="sidebar.collapsed() ? 'Expand navigation' : 'Collapse navigation'"><mat-icon>{{ sidebar.collapsed() ? 'chevron_right' : 'chevron_left' }}</mat-icon></button>
+  </header>
+
+  <nav class="sidebar-content">
+    <section class="nav-group">
+      <p class="nav-label">Workspace</p>
+      <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobile()"><mat-icon>space_dashboard</mat-icon><span>{{ i18n.t('nav.dashboard') }}</span></a>
+      <button type="button" class="nav-toggle" (click)="toggleSettings()" [attr.aria-expanded]="settingsOpen()"><mat-icon>settings</mat-icon><span>{{ i18n.t('nav.settings') }}</span><mat-icon class="toggle-icon" [class.open]="settingsOpen()">expand_more</mat-icon></button>
+      @if (settingsOpen()) { <div class="subnav">
+        <a routerLink="/settings/profile" routerLinkActive="active" (click)="closeMobile()"><mat-icon>account_circle</mat-icon><span>{{ i18n.t('nav.profile') }}</span></a>
+        <a routerLink="/settings/account" routerLinkActive="active" (click)="closeMobile()"><mat-icon>manage_accounts</mat-icon><span>Account</span></a>
+        <a routerLink="/settings/passkeys" routerLinkActive="active" (click)="closeMobile()"><mat-icon>fingerprint</mat-icon><span>{{ i18n.t('security.passkeys') }}</span></a>
+      </div> }
+    </section>
+    @if (auth.hasRole('admin') || auth.hasRole('manager')) {
+      <section class="nav-group administration-group">
+        <button type="button" class="nav-toggle" (click)="toggleAdministration()" [attr.aria-expanded]="administrationOpen()"><mat-icon>admin_panel_settings</mat-icon><span>{{ i18n.t('nav.administration') }}</span><mat-icon class="toggle-icon" [class.open]="administrationOpen()">expand_more</mat-icon></button>
+        @if (administrationOpen()) { <div class="subnav">
+          <a routerLink="/admin/users" routerLinkActive="active" (click)="closeMobile()"><mat-icon>group</mat-icon><span>{{ i18n.t('admin.users') }}</span></a>
+          @if (auth.hasRole('admin')) {
+            <a routerLink="/admin/roles" routerLinkActive="active" (click)="closeMobile()"><mat-icon>shield</mat-icon><span>{{ i18n.t('admin.roles') }}</span></a>
+            <a routerLink="/admin/audit-logs" routerLinkActive="active" (click)="closeMobile()"><mat-icon>history</mat-icon><span>{{ i18n.t('admin.audit') }}</span></a>
+          }
+        </div> }
+      </section>
+    }
+  </nav>
+
+  <footer class="sidebar-footer">
+    <a class="user-card" routerLink="/settings/profile" (click)="closeMobile()"><span class="avatar">@if (auth.user()?.avatar_url) { <img [src]="auth.user()?.avatar_url" alt="Profile photo" /> } @else { {{ auth.user()?.first_name?.slice(0, 1) }} }</span><span class="user-copy"><strong>{{ auth.user()?.first_name }} {{ auth.user()?.last_name }}</strong><small>{{ auth.user()?.email }}</small></span><mat-icon class="more-icon">more_horiz</mat-icon></a>
+    <button type="button" class="logout-button" (click)="logout()"><mat-icon>logout</mat-icon><span>{{ i18n.t('nav.sign_out') }}</span></button>
+  </footer>
+</aside>

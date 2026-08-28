@@ -1,0 +1,28 @@
+<main class="profile-shell app-shell" [class.sidebar-collapsed]="sidebar.collapsed()">
+  <app-sidebar />
+
+  <section class="workspace app-workspace">
+    <app-topbar />
+    @if (message()) { <p class="notice success" role="status"><mat-icon>check_circle_outline</mat-icon>{{ message() }}</p> }
+    @if (error()) { <p class="notice error" role="alert"><mat-icon>error_outline</mat-icon>{{ error() }}</p> }
+
+    <div class="profile-layout">
+      <mat-card appearance="outlined" class="profile-primary-card"><mat-card-content>
+        <div class="profile-reference-identity"><div class="profile-reference-avatar">@if (auth.user()?.avatar_url) { <img [src]="auth.user()?.avatar_url" alt="Your profile photo" /> } @else { <span>{{ auth.user()?.first_name?.slice(0, 1) }}{{ auth.user()?.last_name?.slice(0, 1) }}</span> }<label class="profile-reference-upload" [class.disabled]="loading()" aria-label="Change profile photo"><input type="file" accept="image/png,image/jpeg,image/webp" (change)="uploadAvatar($event)" [disabled]="loading()" /><mat-icon>edit</mat-icon></label></div><div><strong>{{ auth.user()?.first_name }} {{ auth.user()?.last_name }}</strong><small>{{ auth.user()?.email }}</small></div></div>
+        <form class="profile-reference-form" [formGroup]="form" (ngSubmit)="save()" novalidate>
+          <label class="profile-reference-row"><span>Name</span><div class="profile-reference-name"><input formControlName="first_name" autocomplete="given-name" aria-label="First name" placeholder="First name" /><input formControlName="last_name" autocomplete="family-name" aria-label="Last name" placeholder="Last name" /></div></label>
+          <div class="profile-reference-row profile-readonly-row"><span>Email account</span><strong>{{ auth.user()?.email }}</strong></div>
+          <div class="profile-reference-row profile-readonly-row"><span>Username</span><strong>&#64;{{ form.controls.username.value }}</strong></div>
+          <div class="profile-reference-actions"><button mat-flat-button type="submit" class="profile-reference-save" [disabled]="loading() || form.invalid">{{ loading() ? 'Saving…' : 'Save changes' }}</button><small>Profile photo: PNG, JPG or WebP · maximum 2 MB</small></div>
+        </form>
+      </mat-card-content></mat-card>
+
+      <mat-card appearance="outlined" class="profile-sessions-card profile-visual-card"><mat-card-content>
+        <div class="profile-card-heading profile-reference-identity profile-access-reference-header"><span class="profile-card-icon ocean"><mat-icon>devices</mat-icon></span><div><p>Access control</p><h2>Active sessions</h2><span>Review the devices currently signed in to your account.</span></div></div>
+        <button mat-stroked-button type="button" class="profile-revoke-all" (click)="revokeAllSessions()" [disabled]="loading() || !sessions().length"><mat-icon>logout</mat-icon>Sign out all devices</button>
+        <div class="profile-session-items">@for (session of sessions(); track session.id) { <article class="profile-session-item"><span><mat-icon>desktop_windows</mat-icon></span><div><strong>{{ session.device_name || 'Unknown device' }}</strong><small>{{ session.ip_address || 'Unknown IP' }} · {{ session.last_used_at || session.created_at }}</small></div><button mat-stroked-button type="button" (click)="revokeSession(session)" [disabled]="loading()">Revoke</button></article> } @empty { <div class="profile-empty-state"><mat-icon>devices</mat-icon><p>No active sessions found.</p></div> }</div>
+      </mat-card-content></mat-card>
+
+    </div>
+  </section>
+</main>

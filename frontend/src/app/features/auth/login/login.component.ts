@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,11 +8,14 @@ import { MatInputModule } from '@angular/material/input';
 import { Passkeys } from '@laravel/passkeys';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
+import { TranslationService } from '../../../core/i18n/translation.service';
+import { BrandIdentityComponent } from '../../../core/branding/brand-identity.component';
+import { BrandingService } from '../../../core/branding/branding.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule],
+  imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, BrandIdentityComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -20,11 +23,21 @@ import { AuthService } from '../../../core/auth/auth.service';
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
+  readonly i18n = inject(TranslationService);
+  readonly branding = inject(BrandingService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly showPassword = signal(false);
   readonly loading = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly successMessage = signal<string | null>(
+    this.route.snapshot.queryParamMap.get('verified') === '1'
+      ? 'Email verified successfully. You can now sign in.'
+      : this.route.snapshot.queryParamMap.get('email_changed') === '1'
+        ? 'Your email address has been changed. Please sign in again.'
+        : null,
+  );
 
   readonly form = this.fb.nonNullable.group({
     login: ['', [Validators.required, Validators.maxLength(255)]],
