@@ -1,96 +1,81 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { Passkeys } from '@laravel/passkeys';
 import { firstValueFrom } from 'rxjs';
 import { AuthService, AuthSessionSummary, PasskeySummary } from '../../core/auth/auth.service';
+import { TranslationService } from '../../core/i18n/translation.service';
+import { AppSidebarComponent } from '../../core/layout/app-sidebar.component';
+import { SidebarStateService } from '../../core/layout/sidebar-state.service';
+import { AppTopbarComponent } from '../../core/layout/app-topbar.component';
 
 @Component({
   selector: 'app-security',
   standalone: true,
-  imports: [RouterLink, MatButtonModule, MatCardModule, MatFormFieldModule, MatInputModule],
-  template: `
-    <main class="security-page">
-      <section class="security-card">
-        <a routerLink="/dashboard">← Dashboard</a>
-        <h1>Security</h1>
-        <p>Add a passkey to use Face ID, Touch ID, fingerprint, Windows Hello, or another device authenticator.</p>
-
-        <mat-card appearance="outlined">
-          <mat-card-header><mat-card-title>Passkeys</mat-card-title></mat-card-header>
-          <mat-card-content>
-            <mat-form-field appearance="outline">
-              <mat-label>Passkey name</mat-label>
-              <input matInput [value]="name()" (input)="name.set($any($event.target).value)" placeholder="My laptop" />
-            </mat-form-field>
-            <button mat-flat-button (click)="addPasskey()" [disabled]="!name().trim() || loading()">
-              {{ loading() ? 'Waiting for device…' : 'Add passkey' }}
-            </button>
-            <div class="items">
-              @for (passkey of passkeys(); track passkey.id) {
-                <div class="item">
-                  <div><strong>{{ passkey.name }}</strong><small>{{ passkey.authenticator || 'Security authenticator' }}</small></div>
-                  <button mat-stroked-button type="button" (click)="revokePasskey(passkey)" [disabled]="loading()">Remove</button>
-                </div>
-              } @empty { <p>No passkeys registered yet.</p> }
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card appearance="outlined">
-          <mat-card-header><mat-card-title>Active sessions</mat-card-title></mat-card-header>
-          <mat-card-content>
-            <button mat-stroked-button type="button" (click)="revokeAllSessions()" [disabled]="loading() || !sessions().length">Sign out all devices</button>
-            <div class="items">
-              @for (session of sessions(); track session.id) {
-                <div class="item">
-                  <div><strong>{{ session.device_name || 'Unknown device' }}</strong><small>{{ session.ip_address || 'Unknown IP' }} · {{ session.last_used_at || session.created_at }}</small></div>
-                  <button mat-stroked-button type="button" (click)="revokeSession(session)" [disabled]="loading()">Revoke</button>
-                </div>
-              } @empty { <p>No active sessions found.</p> }
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        @if (message()) { <p role="status">{{ message() }}</p> }
-        @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
-      </section>
-    </main>
-  `,
-  styles: `
-    .security-page { min-height:100dvh; display:grid; place-items:center; padding:24px; background:#f7f9fc; }
-    .security-card { width:min(100%,720px); padding:40px; background:#fff; border-radius:24px; box-shadow:0 24px 70px rgb(20 34 66 / 10%); display:grid; gap:20px; }
-    .security-card a { text-decoration:none; }.security-card h1 { margin:0; }
-    mat-card-content { display:grid; gap:16px; padding-top:16px; }.items { display:grid; gap:10px; }
-    .item { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:12px 0; border-top:1px solid #e8ebf0; }
-    .item div { display:grid; gap:4px; }.item small { opacity:.7; }.error { color:#b42318; }
-    @media (max-width:600px) { .security-card { padding:24px; }.item { align-items:flex-start; } }
-  `,
+  imports: [ReactiveFormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, AppSidebarComponent, AppTopbarComponent],
+  templateUrl: './security.component.html',
+  styleUrls: ['./security.component.scss', './security-forms.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SecurityComponent implements OnInit {
-  private readonly auth = inject(AuthService);
+  readonly auth = inject(AuthService);
+  readonly sidebar = inject(SidebarStateService);
+  readonly i18n = inject(TranslationService);
+  private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   readonly name = signal('My device');
   readonly loading = signal(false);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   readonly passkeys = signal<PasskeySummary[]>([]);
   readonly sessions = signal<AuthSessionSummary[]>([]);
+  readonly activeSection = signal<'account' | 'passkeys' | 'sessions'>('account');
+  readonly showCurrentPassword = signal(false);
+  readonly showNewPassword = signal(false);
+  readonly showConfirmationPassword = signal(false);
+  readonly showEmailCurrentPassword = signal(false);
+  readonly passwordForm = this.fb.nonNullable.group({
+    current_password: ['', Validators.required],
+    password: ['', [Validators.required, Validators.minLength(12)]],
+    password_confirmation: ['', Validators.required],
+  });
+  readonly emailForm = this.fb.nonNullable.group({
+    current_password: ['', Validators.required],
+    email: ['', [Validators.required, Validators.email]],
+  });
 
-  ngOnInit(): void { this.loadSecurityData(); }
+  ngOnInit(): void {
+    this.route.data.subscribe(({ section }) => this.activeSection.set(section === 'passkeys' || section === 'sessions' ? section : 'account'));
+    this.loadSecurityData();
+  }
+
+  pageTitle(): string { return this.activeSection() === 'account' ? 'Account security' : this.activeSection() === 'passkeys' ? this.i18n.t('security.passkeys') : 'Sessions and data'; }
+  pageDescription(): string { return this.activeSection() === 'account' ? 'Change sensitive account credentials securely.' : this.activeSection() === 'passkeys' ? 'Use your device to sign in faster and more securely.' : 'Control signed-in devices and your personal data.'; }
+  pageIcon(): string { return this.activeSection() === 'account' ? 'security' : this.activeSection() === 'passkeys' ? 'fingerprint' : 'devices'; }
+  toggleCurrentPassword(): void { this.showCurrentPassword.update((value) => !value); }
+  toggleNewPassword(): void { this.showNewPassword.update((value) => !value); }
+  toggleConfirmationPassword(): void { this.showConfirmationPassword.update((value) => !value); }
+  toggleEmailCurrentPassword(): void { this.showEmailCurrentPassword.update((value) => !value); }
+
+  logout(): void {
+    this.auth.logout().subscribe(() => this.router.navigateByUrl('/login'));
+  }
 
   async addPasskey(): Promise<void> {
     this.loading.set(true); this.message.set(null); this.error.set(null);
     try {
       await firstValueFrom(this.auth.initializeCsrf());
       await Passkeys.register({ name: this.name().trim() });
-      this.message.set('Passkey registered successfully.');
+      this.message.set(this.i18n.t('security.passkey_added'));
       this.loadSecurityData();
     } catch (error: unknown) {
-      this.error.set(error instanceof Error ? error.message : 'The passkey could not be registered. Please try again.');
+      this.error.set(error instanceof Error ? error.message : this.i18n.t('security.passkey_error'));
     }
     finally { this.loading.set(false); }
   }
@@ -120,6 +105,65 @@ export class SecurityComponent implements OnInit {
       error: () => this.error.set('Unable to revoke all sessions.'),
       complete: () => this.loading.set(false),
     });
+  }
+
+  changePassword(): void {
+    if (this.passwordForm.invalid) {
+      this.passwordForm.markAllAsTouched();
+      return;
+    }
+    if (this.passwordForm.controls.password.value !== this.passwordForm.controls.password_confirmation.value) {
+      this.error.set(this.i18n.t('security.password_mismatch'));
+      return;
+    }
+    if (!confirm('Changing your password will sign out all other devices. Continue?')) return;
+
+    this.loading.set(true);
+    this.message.set(null);
+    this.error.set(null);
+    this.auth.changePassword(this.passwordForm.getRawValue()).subscribe({
+      next: () => {
+        this.passwordForm.reset();
+        this.message.set(this.i18n.t('security.password_changed'));
+        this.loadSecurityData();
+      },
+      error: (error: { error?: { message?: string } }) => {
+        this.error.set(error.error?.message ?? this.i18n.t('security.password_error'));
+      },
+      complete: () => this.loading.set(false),
+    });
+  }
+
+  requestEmailChange(): void {
+    if (this.emailForm.invalid) {
+      this.emailForm.markAllAsTouched();
+      return;
+    }
+    if (!confirm('A verification link will be sent to the new email address. Your current email will remain active until it is verified. Continue?')) return;
+
+    this.loading.set(true);
+    this.message.set(null);
+    this.error.set(null);
+    this.auth.requestEmailChange(this.emailForm.getRawValue()).subscribe({
+      next: (response) => {
+        this.emailForm.reset();
+        this.message.set(response.message);
+      },
+      error: (error: { error?: { message?: string } }) => {
+        this.error.set(error.error?.message ?? 'Unable to request the email change.');
+      },
+      complete: () => this.loading.set(false),
+    });
+  }
+
+  downloadExport(): void {
+    this.auth.exportProfile().subscribe({ next: (data) => { const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); link.download = 'my-personal-data.json'; link.click(); URL.revokeObjectURL(link.href); }, error: () => this.error.set('Unable to export your data.') });
+  }
+
+  deleteAccount(): void {
+    const currentPassword = prompt('Enter your current password to permanently delete your account.');
+    if (!currentPassword || prompt('Type DELETE to confirm permanent account deletion.') !== 'DELETE') return;
+    this.loading.set(true); this.auth.deleteProfile({ current_password: currentPassword, confirmation: 'DELETE' }).subscribe({ next: () => { this.auth.logout().subscribe(() => this.router.navigateByUrl('/login')); }, error: (error: { error?: { message?: string } }) => this.error.set(error.error?.message ?? 'Unable to delete your account.'), complete: () => this.loading.set(false) });
   }
 
   private loadSecurityData(): void {

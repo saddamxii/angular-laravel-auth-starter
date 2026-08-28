@@ -1,0 +1,13 @@
+.sidebar-content {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-content::-webkit-scrollbar { display: none; }
+
+.nav-group { margin-bottom: 8px !important; }
+
+.administration-group {
+  padding-top: 0 !important;
+  border-top: 0 !important;
+}

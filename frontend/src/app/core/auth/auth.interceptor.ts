@@ -3,11 +3,13 @@ import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
+import { TranslationService } from '../i18n/translation.service';
 
 export const SKIP_AUTH = new HttpContextToken<boolean>(() => false);
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
+  const i18n = inject(TranslationService);
 
   if (req.context.get(SKIP_AUTH)) {
     return next(req);
@@ -18,6 +20,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const isApiRequest = req.url.startsWith(`${environment.apiUrl}/`);
   const needsCsrfToken = isApiRequest && !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
   const headers: Record<string, string> = {};
+
+  if (isApiRequest) headers['Accept-Language'] = i18n.locale();
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

@@ -32,6 +32,21 @@ if [ -z "${JWT_SECRET:-}" ] || [ "${JWT_SECRET}" = "change-me-development-jwt-se
 fi
 
 if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
+  attempt=1
+  until php -r '
+    $dsn = sprintf("mysql:host=%s;port=%s;dbname=%s", getenv("DB_HOST"), getenv("DB_PORT"), getenv("DB_DATABASE"));
+    new PDO($dsn, getenv("DB_USERNAME"), getenv("DB_PASSWORD"), [PDO::ATTR_TIMEOUT => 3]);
+  ' >/dev/null 2>&1; do
+    if [ "$attempt" -ge 30 ]; then
+      echo "MySQL did not accept application connections after 60 seconds." >&2
+      exit 1
+    fi
+
+    echo "Waiting for MySQL application connection (attempt $attempt/30)..."
+    attempt=$((attempt + 1))
+    sleep 2
+  done
+
   php artisan migrate --force
   php artisan db:seed --force
 fi

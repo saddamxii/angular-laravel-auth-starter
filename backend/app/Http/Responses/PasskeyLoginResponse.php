@@ -15,8 +15,8 @@ class PasskeyLoginResponse implements PasskeyLoginResponseContract
         $user = $request->user('web');
         abort_unless($user && $user->is_active && $user->hasVerifiedEmail(), 403, 'Unable to sign in with this passkey.');
 
-        $accessToken = auth('api')->claims(['token_type' => 'access'])->setTTL((int) config('jwt.ttl'))->login($user);
-        $refreshToken = auth('api')->claims(['token_type' => 'refresh'])->setTTL((int) config('jwt.refresh_ttl'))->login($user);
+        $accessToken = auth('api')->claims(['token_type' => 'access', 'auth_version' => $user->auth_version])->setTTL((int) config('jwt.ttl'))->login($user);
+        $refreshToken = auth('api')->claims(['token_type' => 'refresh', 'auth_version' => $user->auth_version])->setTTL((int) config('jwt.refresh_ttl'))->login($user);
 
         app(AuthSessionManager::class)->record($user, $refreshToken, $request);
 

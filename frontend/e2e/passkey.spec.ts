@@ -25,13 +25,13 @@ test.describe('passkeys', () => {
         isSecureContext: window.isSecureContext,
         publicKeyCredential: typeof window.PublicKeyCredential,
       }))).resolves.toEqual({ isSecureContext: true, publicKeyCredential: 'function' });
-      await page.getByLabel('Email').fill('admin@example.test');
-      await page.getByRole('textbox', { name: 'Password' }).fill('ChangeMe!123456');
+      await page.getByLabel('Email or username').fill('admin@example.test');
+      await page.getByRole('textbox', { name: 'Password' }).fill('Admin@admin.11');
       await page.getByRole('button', { name: 'Sign in', exact: true }).click();
       await expect(page).toHaveURL(/\/dashboard$/);
 
-      await page.goto('/security');
-      await page.getByLabel('Passkey name').fill('Chromium virtual authenticator');
+      await page.goto('/settings/passkeys');
+      await page.getByLabel('Name this device').fill('Chromium virtual authenticator');
       await page.getByRole('button', { name: 'Add passkey' }).click();
       await expect(page.getByText('Passkey registered successfully.')).toBeVisible();
 
@@ -40,7 +40,7 @@ test.describe('passkeys', () => {
       await page.getByRole('button', { name: 'Sign in with passkey' }).click();
       await expect(page).toHaveURL(/\/dashboard$/);
     } finally {
-      await client.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId });
+      await client.send('WebAuthn.removeVirtualAuthenticator', { authenticatorId }).catch(() => undefined);
     }
   });
 });

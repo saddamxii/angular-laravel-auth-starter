@@ -21,6 +21,7 @@ class RegistrationTest extends TestCase
         $response = $this->postJson('/api/auth/register', [
             'first_name' => 'Jane',
             'last_name' => 'Doe',
+            'username' => 'janedoe',
             'email' => 'jane@example.test',
             'password' => 'StrongPassword!123',
             'password_confirmation' => 'StrongPassword!123',
@@ -35,6 +36,7 @@ class RegistrationTest extends TestCase
         $response = $this->postJson('/api/auth/register', [
             'first_name' => 'Jane',
             'last_name' => 'Doe',
+            'username' => 'janedoe',
             'email' => 'jane@example.test',
             'password' => 'StrongPassword!123',
             'password_confirmation' => 'StrongPassword!123',
@@ -42,7 +44,7 @@ class RegistrationTest extends TestCase
         ]);
 
         $response->assertCreated();
-        $this->assertDatabaseHas('users', ['email' => 'jane@example.test']);
+        $this->assertDatabaseHas('users', ['email' => 'jane@example.test', 'username' => 'janedoe']);
         $this->assertDatabaseHas('roles', ['name' => 'user']);
         $this->assertDatabaseHas('role_user', [
             'user_id' => \App\Models\User::where('email', 'jane@example.test')->value('id'),

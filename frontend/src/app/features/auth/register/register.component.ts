@@ -4,58 +4,24 @@ import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '../../../core/auth/auth.service';
+import { TranslationService } from '../../../core/i18n/translation.service';
+import { BrandIdentityComponent } from '../../../core/branding/brand-identity.component';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatInputModule],
-  template: `
-    <main class="auth-shell">
-      <section class="auth-card" aria-labelledby="register-title">
-        <a routerLink="/login">← Sign in</a>
-        <h1 id="register-title">Create your account</h1>
-        <p class="subtitle">Secure access starts here.</p>
-
-        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-          <div class="two-col">
-            <mat-form-field appearance="outline"><mat-label>First name</mat-label><input matInput formControlName="first_name" autocomplete="given-name" /></mat-form-field>
-            <mat-form-field appearance="outline"><mat-label>Last name</mat-label><input matInput formControlName="last_name" autocomplete="family-name" /></mat-form-field>
-          </div>
-          <mat-form-field appearance="outline"><mat-label>Email</mat-label><input matInput type="email" formControlName="email" autocomplete="email" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Password</mat-label><input matInput type="password" formControlName="password" autocomplete="new-password" /></mat-form-field>
-          <mat-form-field appearance="outline"><mat-label>Confirm password</mat-label><input matInput type="password" formControlName="password_confirmation" autocomplete="new-password" /></mat-form-field>
-          <mat-checkbox formControlName="terms_accepted">I accept the terms and conditions.</mat-checkbox>
-
-          @if (errorMessage()) { <p class="error" role="alert">{{ errorMessage() }}</p> }
-          @if (successMessage()) { <p class="success" role="status">{{ successMessage() }}</p> }
-
-          <button mat-flat-button class="primary-action" type="submit" [disabled]="form.invalid || loading()">
-            {{ loading() ? 'Creating account…' : 'Create account' }}
-          </button>
-        </form>
-      </section>
-    </main>
-  `,
-  styles: `
-    .auth-shell { min-height:100dvh; display:grid; place-items:center; padding:24px; background:linear-gradient(135deg,#f7f9fc 0%,#eef3ff 100%); }
-    .auth-card { width:min(100%,560px); padding:clamp(28px,6vw,48px); border-radius:24px; background:#fff; box-shadow:0 24px 70px rgb(20 34 66 / 12%); }
-    .auth-card > a { text-decoration:none; }
-    h1 { margin:28px 0 8px; }
-    .subtitle { color:#687386; margin-bottom:28px; }
-    form { display:grid; gap:14px; }
-    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-    .primary-action { min-height:50px; border-radius:12px; }
-    .error { color:#b42318; }
-    .success { color:#067647; }
-    @media (max-width:560px) { .two-col { grid-template-columns:1fr; } .auth-shell { padding:12px; } .auth-card { border-radius:18px; } }
-  `,
+  imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatIconModule, MatInputModule, BrandIdentityComponent],
+  templateUrl: './register.component.html',
+  styleUrl: './register.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RegisterComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
+  readonly i18n = inject(TranslationService);
   private readonly router = inject(Router);
 
   readonly loading = signal(false);
@@ -65,6 +31,7 @@ export class RegisterComponent {
   readonly form = this.fb.nonNullable.group({
     first_name: ['', [Validators.required, Validators.maxLength(100)]],
     last_name: ['', [Validators.required, Validators.maxLength(100)]],
+    username: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(30), Validators.pattern(/^[A-Za-z0-9_]+$/)]],
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(12)]],
     password_confirmation: ['', [Validators.required]],

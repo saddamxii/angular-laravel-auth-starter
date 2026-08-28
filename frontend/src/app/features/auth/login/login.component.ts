@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,68 +8,39 @@ import { MatInputModule } from '@angular/material/input';
 import { Passkeys } from '@laravel/passkeys';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
+import { TranslationService } from '../../../core/i18n/translation.service';
+import { BrandIdentityComponent } from '../../../core/branding/brand-identity.component';
+import { BrandingService } from '../../../core/branding/branding.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule],
-  template: `
-    <main class="auth-shell">
-      <section class="auth-card" aria-labelledby="login-title">
-        <div class="brand">Auth Starter</div>
-        <h1 id="login-title">Welcome back</h1>
-        <p class="subtitle">Sign in securely to continue.</p>
-
-        <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
-          <mat-form-field appearance="outline">
-            <mat-label>Email</mat-label>
-            <input matInput type="email" formControlName="email" autocomplete="email webauthn" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Password</mat-label>
-            <input matInput [type]="showPassword() ? 'text' : 'password'" formControlName="password" autocomplete="current-password" />
-            <button mat-icon-button matSuffix type="button" (click)="showPassword.set(!showPassword())" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
-              <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
-            </button>
-          </mat-form-field>
-
-          <div class="password-row"><a routerLink="/forgot-password">Forgot password?</a></div>
-
-          @if (errorMessage()) {
-            <p class="error" role="alert">{{ errorMessage() }}</p>
-          }
-
-          <button mat-flat-button class="primary-action" type="submit" [disabled]="form.invalid || loading()">
-            {{ loading() ? 'Signing in…' : 'Sign in' }}
-          </button>
-
-          <div class="divider"><span>or</span></div>
-
-          <button mat-stroked-button type="button" class="passkey-action" (click)="passkeyLogin()" [disabled]="loading()">
-            <mat-icon>fingerprint</mat-icon>
-            Sign in with passkey
-          </button>
-        </form>
-
-        <p class="footer-text">Don't have an account? <a routerLink="/register">Create one</a></p>
-      </section>
-    </main>
-  `,
+  imports: [ReactiveFormsModule, RouterLink, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, BrandIdentityComponent],
+  templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
+  readonly i18n = inject(TranslationService);
+  readonly branding = inject(BrandingService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly showPassword = signal(false);
   readonly loading = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly successMessage = signal<string | null>(
+    this.route.snapshot.queryParamMap.get('verified') === '1'
+      ? 'Email verified successfully. You can now sign in.'
+      : this.route.snapshot.queryParamMap.get('email_changed') === '1'
+        ? 'Your email address has been changed. Please sign in again.'
+        : null,
+  );
 
   readonly form = this.fb.nonNullable.group({
-    email: ['', [Validators.required, Validators.email]],
+    login: ['', [Validators.required, Validators.maxLength(255)]],
     password: ['', [Validators.required]],
   });
 

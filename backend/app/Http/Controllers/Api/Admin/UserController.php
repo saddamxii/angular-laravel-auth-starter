@@ -19,6 +19,7 @@ class UserController
             ->when($request->string('search')->value(), function ($query, string $search): void {
                 $query->where(fn ($q) => $q
                     ->where('email', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
                     ->orWhere('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%"));
             })
@@ -33,14 +34,18 @@ class UserController
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
+            'username' => ['required', 'string', 'min:3', 'max:30', 'regex:/^[A-Za-z0-9_]+$/', 'unique:users,username'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:12', 'confirmed'],
-            'role' => ['required', Rule::in(['admin', 'manager', 'editor', 'user'])],
+            'role' => ['required', 'string', Rule::exists('roles', 'name')],
         ]);
+
+        abort_if(! $request->user()->hasRole('admin') && $validated['role'] !== 'user', 403, 'Managers can only create standard users.');
 
         $user = User::create([
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
+            'username' => strtolower($validated['username']),
             'email' => strtolower($validated['email']),
             'password' => Hash::make($validated['password']),
             'email_verified_at' => now(),
@@ -62,15 +67,31 @@ class UserController
         $validated = $request->validate([
             'first_name' => ['sometimes', 'string', 'max:100'],
             'last_name' => ['sometimes', 'string', 'max:100'],
+            'username' => ['sometimes', 'string', 'min:3', 'max:30', 'regex:/^[A-Za-z0-9_]+$/', Rule::unique('users')->ignore($user->id)],
             'email' => ['sometimes', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'is_active' => ['sometimes', 'boolean'],
-            'role' => ['sometimes', Rule::in(['admin', 'manager', 'editor', 'user'])],
+            'role' => ['sometimes', 'string', Rule::exists('roles', 'name')],
         ]);
 
         $role = $validated['role'] ?? null;
         unset($validated['role']);
+
+        abort_if(
+            ! $request->user()->hasRole('admin') && ($user->hasRole('admin') || $role !== null),
+            403,
+            'Managers cannot modify administrator accounts or roles.'
+        );
+
+        abort_if(
+            $user->is($request->user()) && ($role !== null || array_key_exists('is_active', $validated)),
+            422,
+            'You cannot change your own role or account status.'
+        );
         if (isset($validated['email'])) {
             $validated['email'] = strtolower($validated['email']);
+        }
+        if (isset($validated['username'])) {
+            $validated['username'] = strtolower($validated['username']);
         }
 
         $user->update($validated);

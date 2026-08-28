@@ -5,8 +5,8 @@ namespace Tests\Feature\Auth;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Hash;
-use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use Tests\TestCase;
 
 class AuthorizationTest extends TestCase
@@ -24,13 +24,19 @@ class AuthorizationTest extends TestCase
         $user = User::create([
             'first_name' => 'Regular',
             'last_name' => 'User',
-            'email' => 'user@example.test',
+            'email' => 'authorization-regular@example.test',
             'password' => Hash::make('StrongPassword!123'),
-            'email_verified_at' => now(),
         ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
         $user->roles()->attach(Role::where('name', 'user')->first());
 
-        $token = JWTAuth::claims(['token_type' => 'access'])->fromUser($user);
+        $token = $this->withoutMiddleware(VerifyCsrfToken::class)
+            ->postJson('/api/auth/login', [
+                'email' => $user->email,
+                'password' => 'StrongPassword!123',
+            ])
+            ->assertOk()
+            ->json('access_token');
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/admin/users');

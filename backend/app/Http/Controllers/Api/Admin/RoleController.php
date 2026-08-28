@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Services\AuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class RoleController
 {
@@ -18,16 +19,41 @@ class RoleController
         ]);
     }
 
+    public function store(Request $request, AuditLogger $audit): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'min:3', 'max:50', 'regex:/^[a-z][a-z0-9_]*$/', 'unique:roles,name'],
+            'display_name' => ['required', 'string', 'max:100'],
+            'permissions' => ['present', 'array'],
+            'permissions.*' => ['integer', 'exists:permissions,id'],
+        ]);
+
+        $role = Role::create([
+            'name' => strtolower($validated['name']),
+            'display_name' => $validated['display_name'],
+        ]);
+        $role->permissions()->sync($validated['permissions']);
+        $audit->log('admin.role_created', $request->user()->id, ['role_id' => $role->id]);
+
+        return response()->json(['role' => $role->fresh()->load('permissions')], 201);
+    }
+
     public function update(Request $request, Role $role, AuditLogger $audit): JsonResponse
     {
         $validated = $request->validate([
+            'name' => ['sometimes', 'string', 'min:3', 'max:50', 'regex:/^[a-z][a-z0-9_]*$/', Rule::unique('roles', 'name')->ignore($role->id)],
             'display_name' => ['sometimes', 'string', 'max:100'],
             'permissions' => ['sometimes', 'array'],
             'permissions.*' => ['integer', 'exists:permissions,id'],
         ]);
 
-        if (isset($validated['display_name'])) {
-            $role->update(['display_name' => $validated['display_name']]);
+        abort_if($role->name === 'admin' && isset($validated['name']) && $validated['name'] !== 'admin', 422, 'The administrator role cannot be renamed.');
+
+        if (isset($validated['display_name']) || isset($validated['name'])) {
+            $role->update(array_filter([
+                'name' => isset($validated['name']) ? strtolower($validated['name']) : null,
+                'display_name' => $validated['display_name'] ?? null,
+            ], static fn ($value) => $value !== null));
         }
         if (isset($validated['permissions'])) {
             $role->permissions()->sync($validated['permissions']);
@@ -36,5 +62,17 @@ class RoleController
         $audit->log('admin.role_updated', $request->user()->id, ['role_id' => $role->id]);
 
         return response()->json(['role' => $role->fresh()->load('permissions')]);
+    }
+
+    public function destroy(Request $request, Role $role, AuditLogger $audit): JsonResponse
+    {
+        abort_if($role->name === 'admin', 422, 'The administrator role cannot be deleted.');
+        abort_if($role->users()->exists(), 422, 'Assign another role to all users before deleting this role.');
+
+        $roleId = $role->id;
+        $role->delete();
+        $audit->log('admin.role_deleted', $request->user()->id, ['role_id' => $roleId]);
+
+        return response()->json(['message' => 'Role deleted.']);
     }
 }

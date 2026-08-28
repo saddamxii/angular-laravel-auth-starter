@@ -1,0 +1,15 @@
+/* Dense role editor: concise identity fields and a searchable checklist. */
+.role-details-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.role-details-row .role-modal-field small { min-height: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.permissions-section { gap: 9px; }
+.permission-section-heading { align-items: center; }
+.permission-section-heading .role-section-label { margin: 0; }
+
+.permission-search { display: flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 9px; border: 1px solid #d8e3ee; border-radius: 8px; color: #67809b; background: #fff; transition: border-color .16s ease, box-shadow .16s ease; }.permission-search:focus-within { border-color: #3979b8; box-shadow: 0 0 0 3px rgb(57 121 184 / 12%); }.permission-search mat-icon { width: 17px; height: 17px; font-size: 17px; line-height: 17px; }.permission-search input { min-width: 0; flex: 1; border: 0; outline: 0; color: #2d4866; font: inherit; font-size: .77rem; background: transparent; }.permission-search input::placeholder { color: #9aabbb; }.permission-search button { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 5px; color: #71849a; background: transparent; cursor: pointer; }.permission-search button:hover { color: #a63448; background: #fff0f2; }.permission-search button mat-icon { width: 16px; height: 16px; font-size: 16px; line-height: 16px; }
+
+.role-dialog .permissions.permission-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 168px; gap: 4px 7px; overflow: auto; padding: 1px; }.permission-list .permission-choice { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: center; column-gap: 7px; min-height: 30px; padding: 5px 6px; }.permission-list .permission-choice > span { grid-row: 1 / span 2; }.permission-list .permission-choice em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .73rem; }.permission-list .permission-choice small { overflow: hidden; color: #8193a6; text-overflow: ellipsis; white-space: nowrap; font-size: .62rem; }.permissions-empty { grid-column: 1 / -1; margin: 4px 0; color: #7c8da0; font-size: .74rem; }
+
+html[data-theme='dark'] .permission-search { border-color: #344b65; color: #a9bed2; background: #111c2c; }html[data-theme='dark'] .permission-search input { color: #e2ecf7; }html[data-theme='dark'] .permission-list .permission-choice small, html[data-theme='dark'] .permissions-empty { color: #aebfd1; }
+
+@media (max-width: 560px) { .role-details-row, .role-dialog .permissions.permission-list { grid-template-columns: 1fr; }.role-details-row .role-modal-field small { white-space: normal; }.role-dialog .permissions.permission-list { max-height: 180px; } }
