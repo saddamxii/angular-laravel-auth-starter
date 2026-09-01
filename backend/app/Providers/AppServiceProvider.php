@@ -25,11 +25,6 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme((string) (parse_url($applicationUrl, PHP_URL_SCHEME) ?: 'http'));
         }
 
-        RateLimiter::for('auth', function (Request $request) {
-            $identifier = strtolower(trim((string) ($request->input('login') ?? $request->input('email'))));
-            return Limit::perMinute(5)->by($identifier.'|'.$request->ip());
-        });
-
         RateLimiter::for('refresh', function (Request $request) {
             return Limit::perMinute(10)->by($request->ip());
         });

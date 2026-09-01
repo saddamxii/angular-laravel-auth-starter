@@ -75,4 +75,44 @@ class LoginTest extends TestCase
             'password' => 'StrongPassword!123',
         ])->assertOk()->assertJsonPath('user.username', 'jane_doe');
     }
+
+    public function test_successful_password_logins_do_not_trigger_the_failed_login_limiter(): void
+    {
+        $user = User::create([
+            'first_name' => 'Rate',
+            'last_name' => 'Limit',
+            'email' => 'rate-limit@example.test',
+            'password' => Hash::make('StrongPassword!123'),
+            'is_active' => true,
+        ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
+        $user->roles()->attach(Role::where('name', 'user')->first());
+
+        foreach (range(1, 6) as $_) {
+            $this->postJson('/api/auth/login', [
+                'email' => $user->email,
+                'password' => 'StrongPassword!123',
+            ])->assertOk();
+        }
+    }
+
+    public function test_failed_password_attempts_are_limited_per_account_and_ip(): void
+    {
+        foreach (range(1, 5) as $_) {
+            $this->postJson('/api/auth/login', [
+                'email' => 'target@example.test',
+                'password' => 'IncorrectPassword!123',
+            ])->assertUnauthorized();
+        }
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'target@example.test',
+            'password' => 'IncorrectPassword!123',
+        ])->assertTooManyRequests();
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'another-account@example.test',
+            'password' => 'IncorrectPassword!123',
+        ])->assertUnauthorized();
+    }
 }
