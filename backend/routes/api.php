@@ -17,7 +17,7 @@ Route::get('profile/avatar/{user}', [ProfileController::class, 'avatar'])->middl
 Route::middleware(['web', 'locale', 'auth.audit'])->prefix('auth')->group(function (): void {
     Route::get('csrf-cookie', fn () => response()->json(['token' => csrf_token()]));
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:5,1');
-    Route::post('login', [AuthController::class, 'login'])->middleware('throttle:auth');
+    Route::post('login', [AuthController::class, 'login']);
     Route::post('refresh', [AuthController::class, 'refresh'])->middleware('throttle:10,1');
     Route::post('password/forgot', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
     Route::post('password/reset', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');

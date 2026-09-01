@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
@@ -55,13 +56,25 @@ class AuthController
             'password' => ['required', 'string'],
         ]);
         $identifier = Str::lower(trim((string) ($credentials['login'] ?? $credentials['email'])));
+        $throttleKey = 'password-login:'.$identifier.'|'.$request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            return response()->json([
+                'message' => 'Too many failed sign-in attempts. Please try again later.',
+                'retry_after' => RateLimiter::availableIn($throttleKey),
+            ], 429);
+        }
+
         $user = filter_var($identifier, FILTER_VALIDATE_EMAIL)
             ? User::where('email', $identifier)->first()
             : User::where('username', $identifier)->first();
         if (! $user || ! $user->is_active || ! password_verify($credentials['password'], $user->password)) {
+            RateLimiter::hit($throttleKey, 60);
             return response()->json(['message' => 'The provided credentials are invalid.'], 401);
         }
         if (! $user->hasVerifiedEmail()) return response()->json(['message' => 'Please verify your email address before signing in.'], 403);
+
+        RateLimiter::clear($throttleKey);
 
         auth('web')->login($user);
         $token = auth('api')->claims(['token_type' => 'access', 'auth_version' => $user->auth_version])->setTTL((int) config('jwt.ttl'))->login($user);
