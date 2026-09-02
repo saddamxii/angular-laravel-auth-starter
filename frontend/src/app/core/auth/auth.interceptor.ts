@@ -7,6 +7,10 @@ import { TranslationService } from '../i18n/translation.service';
 
 export const SKIP_AUTH = new HttpContextToken<boolean>(() => false);
 
+/**
+ * API transport flow: adds locale, JWT and CSRF headers; on an expired access JWT it
+ * calls AuthService.refresh(), retries the original request once, then logs out if refresh fails.
+ */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const i18n = inject(TranslationService);

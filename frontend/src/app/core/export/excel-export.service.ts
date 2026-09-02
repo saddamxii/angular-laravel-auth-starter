@@ -10,6 +10,11 @@ interface ZipEntry {
 /** Creates a small, dependency-free XLSX workbook for client-side table exports. */
 @Injectable({ providedIn: 'root' })
 export class ExcelExportService {
+  /**
+   * Browser-only export utility: callers provide rows already loaded from Laravel (for example AdminComponent's
+   * filtered table); this service creates XLSX XML/ZIP bytes and triggers a local download without SQL writes.
+   */
+  /** Table rows -> XLSX worksheet XML -> ZIP Blob -> browser download; no data is sent back to the API. */
   export(filename: string, sheetName: string, headers: string[], rows: SpreadsheetValue[][]): void {
     const worksheet = this.worksheetXml(headers, rows);
     const archive = this.zip([

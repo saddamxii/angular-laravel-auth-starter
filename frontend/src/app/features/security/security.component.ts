@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { Passkeys } from '@laravel/passkeys';
 import { firstValueFrom } from 'rxjs';
-import { AuthService, AuthSessionSummary, PasskeySummary } from '../../core/auth/auth.service';
+import { AuthService, PasskeySummary } from '../../core/auth/auth.service';
 import { TranslationService } from '../../core/i18n/translation.service';
 import { AppSidebarComponent } from '../../core/layout/app-sidebar.component';
 import { SidebarStateService } from '../../core/layout/sidebar-state.service';
@@ -23,19 +23,18 @@ import { AppTopbarComponent } from '../../core/layout/app-topbar.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SecurityComponent implements OnInit {
+  /** Settings flow: Account forms update sensitive users fields; Passkeys uses WebAuthn then reads/deletes rows from Laravel's passkeys table. */
   readonly auth = inject(AuthService);
   readonly sidebar = inject(SidebarStateService);
   readonly i18n = inject(TranslationService);
   private readonly fb = inject(FormBuilder);
-  private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   readonly name = signal('My device');
   readonly loading = signal(false);
   readonly message = signal<string | null>(null);
   readonly error = signal<string | null>(null);
   readonly passkeys = signal<PasskeySummary[]>([]);
-  readonly sessions = signal<AuthSessionSummary[]>([]);
-  readonly activeSection = signal<'account' | 'passkeys' | 'sessions'>('account');
+  readonly activeSection = signal<'account' | 'passkeys'>('account');
   readonly showCurrentPassword = signal(false);
   readonly showNewPassword = signal(false);
   readonly showConfirmationPassword = signal(false);
@@ -50,63 +49,45 @@ export class SecurityComponent implements OnInit {
     email: ['', [Validators.required, Validators.email]],
   });
 
+  /** Route data chooses Account or Passkeys; only the Passkeys destination requires a passkeys-table read. */
   ngOnInit(): void {
-    this.route.data.subscribe(({ section }) => this.activeSection.set(section === 'passkeys' || section === 'sessions' ? section : 'account'));
-    this.loadSecurityData();
+    this.route.data.subscribe(({ section }) => {
+      const activeSection = section === 'passkeys' ? 'passkeys' : 'account';
+      this.activeSection.set(activeSection);
+      if (activeSection === 'passkeys') this.loadPasskeys();
+    });
   }
 
-  pageTitle(): string { return this.activeSection() === 'account' ? 'Account security' : this.activeSection() === 'passkeys' ? this.i18n.t('security.passkeys') : 'Sessions and data'; }
-  pageDescription(): string { return this.activeSection() === 'account' ? 'Change sensitive account credentials securely.' : this.activeSection() === 'passkeys' ? 'Use your device to sign in faster and more securely.' : 'Control signed-in devices and your personal data.'; }
-  pageIcon(): string { return this.activeSection() === 'account' ? 'security' : this.activeSection() === 'passkeys' ? 'fingerprint' : 'devices'; }
   toggleCurrentPassword(): void { this.showCurrentPassword.update((value) => !value); }
   toggleNewPassword(): void { this.showNewPassword.update((value) => !value); }
   toggleConfirmationPassword(): void { this.showConfirmationPassword.update((value) => !value); }
   toggleEmailCurrentPassword(): void { this.showEmailCurrentPassword.update((value) => !value); }
 
-  logout(): void {
-    this.auth.logout().subscribe(() => this.router.navigateByUrl('/login'));
-  }
-
+  /** Device-name input -> WebAuthn browser ceremony -> Laravel package writes passkeys row -> reloads the passkey list. */
   async addPasskey(): Promise<void> {
     this.loading.set(true); this.message.set(null); this.error.set(null);
     try {
       await firstValueFrom(this.auth.initializeCsrf());
       await Passkeys.register({ name: this.name().trim() });
       this.message.set(this.i18n.t('security.passkey_added'));
-      this.loadSecurityData();
+      this.loadPasskeys();
     } catch (error: unknown) {
       this.error.set(error instanceof Error ? error.message : this.i18n.t('security.passkey_error'));
     }
     finally { this.loading.set(false); }
   }
 
+  /** Passkey row remove button -> DELETE /passkeys/{id} -> owned passkeys record is deleted, then list reloads. */
   revokePasskey(passkey: PasskeySummary): void {
     if (!confirm(`Remove passkey “${passkey.name}”?`)) return;
     this.loading.set(true); this.auth.revokePasskey(passkey.id).subscribe({
-      next: (response) => { this.message.set(response.message); this.loadSecurityData(); },
+      next: (response) => { this.message.set(response.message); this.loadPasskeys(); },
       error: () => this.error.set('Unable to remove this passkey.'),
       complete: () => this.loading.set(false),
     });
   }
 
-  revokeSession(session: AuthSessionSummary): void {
-    if (!confirm('Revoke this authentication session?')) return;
-    this.loading.set(true); this.auth.revokeSession(session.id).subscribe({
-      next: (response) => { this.message.set(response.message); this.loadSecurityData(); },
-      error: () => this.error.set('Unable to revoke this session.'),
-      complete: () => this.loading.set(false),
-    });
-  }
-
-  revokeAllSessions(): void {
-    if (!confirm('Sign out all devices?')) return;
-    this.loading.set(true); this.auth.revokeAllSessions().subscribe({
-      next: (response) => { this.message.set(response.message); this.loadSecurityData(); },
-      error: () => this.error.set('Unable to revoke all sessions.'),
-      complete: () => this.loading.set(false),
-    });
-  }
-
+  /** Account password form -> PUT /profile/password -> users.password/auth_version and auth_sessions -> new AuthService identity. */
   changePassword(): void {
     if (this.passwordForm.invalid) {
       this.passwordForm.markAllAsTouched();
@@ -125,7 +106,6 @@ export class SecurityComponent implements OnInit {
       next: () => {
         this.passwordForm.reset();
         this.message.set(this.i18n.t('security.password_changed'));
-        this.loadSecurityData();
       },
       error: (error: { error?: { message?: string } }) => {
         this.error.set(error.error?.message ?? this.i18n.t('security.password_error'));
@@ -134,6 +114,7 @@ export class SecurityComponent implements OnInit {
     });
   }
 
+  /** Account email form -> PUT /profile/email -> users.pending_email/token and mail notifications -> signed verification route. */
   requestEmailChange(): void {
     if (this.emailForm.invalid) {
       this.emailForm.markAllAsTouched();
@@ -156,18 +137,8 @@ export class SecurityComponent implements OnInit {
     });
   }
 
-  downloadExport(): void {
-    this.auth.exportProfile().subscribe({ next: (data) => { const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); link.download = 'my-personal-data.json'; link.click(); URL.revokeObjectURL(link.href); }, error: () => this.error.set('Unable to export your data.') });
-  }
-
-  deleteAccount(): void {
-    const currentPassword = prompt('Enter your current password to permanently delete your account.');
-    if (!currentPassword || prompt('Type DELETE to confirm permanent account deletion.') !== 'DELETE') return;
-    this.loading.set(true); this.auth.deleteProfile({ current_password: currentPassword, confirmation: 'DELETE' }).subscribe({ next: () => { this.auth.logout().subscribe(() => this.router.navigateByUrl('/login')); }, error: (error: { error?: { message?: string } }) => this.error.set(error.error?.message ?? 'Unable to delete your account.'), complete: () => this.loading.set(false) });
-  }
-
-  private loadSecurityData(): void {
+  /** GET /passkeys -> filters passkeys by current users.id -> passkeys signal rendered in Settings. */
+  private loadPasskeys(): void {
     this.auth.listPasskeys().subscribe({ next: (response) => this.passkeys.set(response.passkeys), error: () => this.error.set('Unable to load passkeys.') });
-    this.auth.listSessions().subscribe({ next: (response) => this.sessions.set(response.sessions), error: () => this.error.set('Unable to load sessions.') });
   }
 }

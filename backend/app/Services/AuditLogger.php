@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 
 class AuditLogger
 {
+    /** Any sensitive controller action -> append-only audit_logs row with actor, event, request IP and safe metadata -> Admin audit table. */
     public function log(string $event, ?int $userId = null, array $metadata = [], ?Request $request = null): void
     {
         $request ??= request();

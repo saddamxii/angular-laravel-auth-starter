@@ -11,9 +11,12 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SessionController;
 use Illuminate\Support\Facades\Route;
 
+// Public bootstrap: Angular BrandingService reads .env/config branding values before rendering auth screens.
 Route::get('branding', [BrandingController::class, 'show']);
+// Avatar URLs are signed by User::getAvatarUrlAttribute; this route streams the file stored for one users row.
 Route::get('profile/avatar/{user}', [ProfileController::class, 'avatar'])->middleware('canonical.signed')->name('profile.avatar');
 
+// Guest/authentication boundary: Angular AuthService sends forms here; AuthenticationAuditMiddleware records outcomes in audit_logs.
 Route::middleware(['web', 'locale', 'auth.audit'])->prefix('auth')->group(function (): void {
     Route::get('csrf-cookie', fn () => response()->json(['token' => csrf_token()]));
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:5,1');
@@ -30,12 +33,14 @@ Route::middleware(['web', 'locale', 'auth.audit'])->prefix('auth')->group(functi
         ->middleware('canonical.signed')
         ->name('profile.email.verify');
 
+    // Current authenticated identity: refreshes Angular currentUser from users -> roles -> permissions.
     Route::middleware(['auth:api', 'access.token'])->group(function (): void {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
     });
 });
 
+// Protected application data. The JWT resolves the current users row; permissions are enforced here, never only in Angular.
 Route::middleware(['locale', 'auth:api', 'access.token'])->group(function (): void {
     Route::get('/health/authenticated', fn () => response()->json(['status' => 'ok']));
     Route::put('profile/password', [AuthController::class, 'changePassword'])->middleware('throttle:password-change');
@@ -53,6 +58,7 @@ Route::middleware(['locale', 'auth:api', 'access.token'])->group(function (): vo
     Route::get('passkeys', [PasskeyController::class, 'index'])->middleware('permission:passkeys.view');
     Route::delete('passkeys/{passkey}', [PasskeyController::class, 'destroy'])->middleware('permission:passkeys.revoke');
 
+    // Administration tables shown by AdminComponent. Mutations create audit_logs records through AuditLogger.
     Route::prefix('admin')->middleware('role:admin,manager')->group(function (): void {
         Route::get('users', [UserController::class, 'index'])->middleware('permission:users.view');
         Route::post('users', [UserController::class, 'store'])->middleware('permission:users.create');

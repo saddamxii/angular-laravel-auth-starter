@@ -30,6 +30,15 @@ type TableKey = 'users' | 'roles' | 'audit';
   templateUrl: './admin.component.html', styleUrls: ['./admin.component.scss', './admin-cards.component.scss', './admin-users.component.scss', './admin-roles-audit.component.scss', './admin-responsive.component.scss', './admin-dialog-compact.component.scss', './admin-role-dialog-dense.component.scss', './admin-permissions.component.scss'], changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminComponent implements OnInit {
+  /**
+   * Administration data flow map:
+   * - ngOnInit/refresh/loadUsers/loadRoles/loadAudit* read Laravel /admin endpoints backed by users, roles,
+   *   permissions, pivot tables and audit_logs, then store results in Angular signals.
+   * - save, delete and mutate methods send dialogs to Laravel controllers; those controllers validate SQL writes and AuditLogger.
+   * - filtering, pagination and page-navigation helpers work only on loaded browser data; export methods send visible rows to ExcelExportService.
+   * - audit filter methods turn form values into /admin/audit-logs query parameters and replace auditLogs/audit page signals.
+   * - selectTab changes only the frontend route; Laravel middleware is still responsible for access control.
+   */
   private readonly http = inject(HttpClient);
   readonly auth = inject(AuthService);
   readonly sidebar = inject(SidebarStateService);
@@ -76,6 +85,7 @@ export class AdminComponent implements OnInit {
   roleForm = this.emptyRoleForm();
   permissionForm = this.emptyPermissionForm();
 
+  /** Route /admin/users|roles|audit-logs -> data.section -> selects table and starts the appropriate backend reads. */
   ngOnInit(): void {
     this.route.data.subscribe(({ section }) => {
       const tab = section === 'roles' || section === 'audit' ? section : 'users';
@@ -84,6 +94,7 @@ export class AdminComponent implements OnInit {
       this.refresh();
     });
   }
+  /** Reload entry point used after route changes and mutations; destination is users/roles or audit signals. */
   refresh(): void {
     if (this.activeTab() === 'audit') {
       this.loadAuditLogs();
@@ -94,27 +105,13 @@ export class AdminComponent implements OnInit {
     this.loadUsers();
     if (this.isAdmin()) this.loadRoles();
   }
+  /** Sidebar/admin tab action -> router destination; ngOnInit then reads the corresponding SQL-backed endpoint. */
   selectTab(tab: 'users' | 'roles' | 'audit'): void {
     void this.router.navigateByUrl(tab === 'users' ? '/admin/users' : tab === 'roles' ? '/admin/roles' : '/admin/audit-logs');
   }
-  pageTitle(): string {
-    return this.activeTab() === 'users'
-      ? this.i18n.t('admin.users')
-      : this.activeTab() === 'roles'
-        ? this.i18n.t('admin.roles')
-        : this.i18n.t('admin.audit');
-  }
-  pageDescription(): string {
-    return this.activeTab() === 'users'
-      ? 'Manage people, account status and access from one place.'
-      : this.activeTab() === 'roles'
-        ? 'Create clear access policies and assign the right permissions.'
-        : 'Review account activity and investigate important security events.';
-  }
-  pageIcon(): string { return this.activeTab() === 'users' ? 'group' : this.activeTab() === 'roles' ? 'shield' : 'history'; }
-  logout(): void { this.auth.logout().subscribe(() => this.router.navigateByUrl('/login')); }
   isAdmin(): boolean { return this.auth.hasRole('admin'); }
 
+  /** Selected users table row -> copies its API data into the edit dialog model. */
   editUser(user: AdminUser): void {
     this.editingUser.set(user);
     this.userForm = { first_name: user.first_name, last_name: user.last_name, username: user.username ?? '', email: user.email, password: '', role: user.roles[0]?.name ?? 'user', is_active: user.is_active };
@@ -123,6 +120,7 @@ export class AdminComponent implements OnInit {
   openCreateUser(): void { this.editingUser.set(null); this.userForm = this.emptyUserForm(); this.userDialogOpen.set(true); }
   cancelUserEdit(): void { this.userDialogOpen.set(false); this.editingUser.set(null); this.userForm = this.emptyUserForm(); }
   onUserDialogKeydown(event: KeyboardEvent): void { if (event.key === 'Escape') this.cancelUserEdit(); }
+  /** User dialog -> POST/PUT /admin/users -> users + role_user -> mutation callback reloads the users table. */
   saveUser(): void {
     const editing = this.editingUser();
     const payload = editing
@@ -141,6 +139,7 @@ export class AdminComponent implements OnInit {
         };
     this.mutate(editing ? this.http.put(`${environment.apiUrl}/admin/users/${editing.id}`, payload) : this.http.post(`${environment.apiUrl}/admin/users`, payload), editing ? 'User updated.' : 'User created.', () => { this.cancelUserEdit(); this.loadUsers(); });
   }
+  /** Delete action -> DELETE /admin/users/{id} -> UserController + audit_logs -> reloads the users signal. */
   deleteUser(user: AdminUser): void {
     if (confirm(`Delete ${user.email}?`)) this.mutate(this.http.delete(`${environment.apiUrl}/admin/users/${user.id}`), 'User deleted.', () => this.loadUsers());
   }
@@ -157,10 +156,12 @@ export class AdminComponent implements OnInit {
     return query ? this.permissions().filter((permission) => `${permission.display_name} ${permission.name}`.toLowerCase().includes(query)) : this.permissions();
   }
   setPermissionSearch(value: string): void { this.permissionSearch.set(value); }
+  /** Role dialog -> POST/PUT /admin/roles -> roles + permission_role -> reloads roles and users. */
   saveRole(): void {
     const editing = this.editingRole(); const payload = { ...this.roleForm, permissions: this.selectedPermissions() };
     this.mutate(editing ? this.http.put(`${environment.apiUrl}/admin/roles/${editing.id}`, payload) : this.http.post(`${environment.apiUrl}/admin/roles`, payload), editing ? 'Role updated.' : 'Role created.', () => { this.cancelRoleEdit(); this.loadRoles(); this.loadUsers(); });
   }
+  /** Delete role action -> backend removes role/pivot data under admin authorization, then reloads visible tables. */
   deleteRole(role: AdminRole): void {
     if (confirm(`Delete the role “${role.display_name}”?`)) this.mutate(this.http.delete(`${environment.apiUrl}/admin/roles/${role.id}`), 'Role deleted.', () => this.loadRoles());
   }
@@ -179,6 +180,7 @@ export class AdminComponent implements OnInit {
   nextUserPage(): void { if (this.userPage() < this.userLastPage()) this.userPage.update((page) => page + 1); }
   goToUserPage(page: number): void { this.userPage.set(Math.min(Math.max(1, page), this.userLastPage())); }
   clearUserSearch(): void { this.setUserSearch(''); }
+  /** Exports currently filtered users (not a new SQL query) through ExcelExportService to a browser download. */
   exportUsers(): void {
     this.excelExport.export('users', 'Users', ['Name', 'Username', 'Email', 'Role', 'Status'], this.paginatedUsers().map((user) => [
       `${user.first_name} ${user.last_name}`, user.username ?? '', user.email, this.roleNames(user), user.is_active ? 'Active' : 'Disabled',
@@ -197,6 +199,7 @@ export class AdminComponent implements OnInit {
   nextRolePage(): void { if (this.rolePage() < this.roleLastPage()) this.rolePage.update((page) => page + 1); }
   goToRolePage(page: number): void { this.rolePage.set(Math.min(Math.max(1, page), this.roleLastPage())); }
   clearRoleSearch(): void { this.setRoleSearch(''); }
+  /** Exports the currently filtered roles/permission summaries through ExcelExportService. */
   exportRoles(): void {
     this.excelExport.export('roles', 'Roles', ['Role', 'Identifier', 'Permissions', 'Access scope'], this.paginatedRoles().map((role) => [
       role.display_name, role.name, role.permissions.length, role.permissions.map((permission) => permission.display_name).join(', ') || 'No permissions assigned',
@@ -214,12 +217,14 @@ export class AdminComponent implements OnInit {
   previousPermissionPage(): void { if (this.permissionPage() > 1) this.permissionPage.update((page) => page - 1); }
   nextPermissionPage(): void { if (this.permissionPage() < this.permissionLastPage()) this.permissionPage.update((page) => page + 1); }
   goToPermissionPage(page: number): void { this.permissionPage.set(Math.min(Math.max(1, page), this.permissionLastPage())); }
+  /** Exports the currently filtered permissions already loaded with /admin/roles. */
   exportPermissions(): void {
     this.excelExport.export('permissions', 'Permissions', ['Permission', 'Identifier'], this.paginatedAdminPermissions().map((permission) => [permission.display_name, permission.name]));
   }
   openCreatePermission(): void { this.permissionForm = this.emptyPermissionForm(); this.permissionDialogOpen.set(true); }
   cancelPermissionCreate(): void { this.permissionDialogOpen.set(false); this.permissionForm = this.emptyPermissionForm(); }
   onPermissionDialogKeydown(event: KeyboardEvent): void { if (event.key === 'Escape') this.cancelPermissionCreate(); }
+  /** Permission dialog -> POST /admin/permissions -> permissions table + audit_logs -> roles data reload. */
   savePermission(): void {
     this.mutate(this.http.post(`${environment.apiUrl}/admin/permissions`, this.permissionForm), 'Permission created.', () => { this.cancelPermissionCreate(); this.loadRoles(); });
   }
@@ -252,6 +257,7 @@ export class AdminComponent implements OnInit {
     this.auditUserQuery.set(user ? this.auditUserLabel(user) : '');
   }
   auditUserLabel(user: AuditOptions['users'][number]): string { return `${user.first_name} ${user.last_name} — ${user.email}`; }
+  /** Exports the current server-filtered audit_logs page after formatting it for Excel. */
   exportAuditLogs(): void {
     this.excelExport.export('audit-log', 'Audit log', ['When', 'Actor', 'Email', 'Event', 'IP address', 'Details'], this.filteredAuditLogs().map((log) => [
       log.created_at, this.auditUserName(log), log.user?.email ?? 'No linked account', log.event, log.ip_address ?? '', this.auditMetadata(log),
@@ -294,19 +300,23 @@ export class AdminComponent implements OnInit {
     return Object.entries(log.metadata).map(([key, value]) => `${key.replaceAll('_', ' ')}: ${String(value)}`).join(' · ');
   }
 
+  /** GET /admin/users -> UserController joins users/roles/permissions -> users signal for local search and pagination. */
   private loadUsers(): void {
     this.loading.set(true);
     this.http.get<{ data: AdminUser[] }>(`${environment.apiUrl}/admin/users`).subscribe({ next: (response) => { this.users.set(response.data); this.userPage.update((page) => Math.min(page, this.pageCount(response.data.length, this.userPageSize()))); }, error: (error: HttpErrorResponse) => this.showError(error, 'Unable to load users.'), complete: () => this.loading.set(false) });
   }
+  /** GET /admin/roles -> roles + permission_role + permissions -> roles and permissions signals. */
   private loadRoles(): void {
     this.http.get<{ roles: AdminRole[]; permissions: Permission[] }>(`${environment.apiUrl}/admin/roles`).subscribe({ next: (response) => { this.roles.set(response.roles); this.rolePage.update((page) => Math.min(page, this.pageCount(response.roles.length, this.rolePageSize()))); this.permissions.set(response.permissions); this.permissionPage.update((page) => Math.min(page, this.pageCount(response.permissions.length, this.permissionPageSize()))); }, error: (error: HttpErrorResponse) => this.showError(error, 'Unable to load roles.') });
   }
+  /** GET /admin/audit-logs/options -> audit_logs/users -> autocomplete lists for filter controls. */
   private loadAuditOptions(): void {
     this.http.get<AuditOptions>(`${environment.apiUrl}/admin/audit-logs/options`).subscribe({
       next: (response) => { this.auditEvents.set(response.events); this.auditUsers.set(response.users); },
       error: (error: HttpErrorResponse) => this.showError(error, 'Unable to load audit filters.'),
     });
   }
+  /** GET /admin/audit-logs with selected filters -> paginated audit_logs + user relation -> audit table signals. */
   private loadAuditLogs(page = this.auditPage()): void {
     this.loading.set(true);
     let params = new HttpParams().set('page', page).set('per_page', this.auditPageSize());
@@ -320,6 +330,7 @@ export class AdminComponent implements OnInit {
       complete: () => this.loading.set(false),
     });
   }
+  /** Shared mutation subscriber: sends the prepared HTTP request, publishes UI feedback, then invokes its table reload callback. */
   private mutate(request: Observable<unknown>, success: string, done: () => void): void {
     this.loading.set(true); this.message.set(null); this.error.set(null);
     this.auth.initializeCsrf().pipe(switchMap(() => request)).subscribe({ next: () => { this.message.set(success); done(); }, error: (error: HttpErrorResponse) => this.showError(error, 'The change could not be saved.'), complete: () => this.loading.set(false) });

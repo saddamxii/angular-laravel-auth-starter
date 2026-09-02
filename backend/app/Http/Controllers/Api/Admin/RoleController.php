@@ -11,6 +11,7 @@ use Illuminate\Validation\Rule;
 
 class RoleController
 {
+    /** Roles/permissions administration page -> reads roles with permissions for the AdminComponent tables and dialogs. */
     public function index(): JsonResponse
     {
         return response()->json([
@@ -19,6 +20,7 @@ class RoleController
         ]);
     }
 
+    /** Add role dialog -> inserts roles, syncs permission_role pivot rows and logs the operation. */
     public function store(Request $request, AuditLogger $audit): JsonResponse
     {
         $validated = $request->validate([
@@ -38,6 +40,7 @@ class RoleController
         return response()->json(['role' => $role->fresh()->load('permissions')], 201);
     }
 
+    /** Edit role dialog -> changes roles fields/permission_role links, then emits an audit_logs record. */
     public function update(Request $request, Role $role, AuditLogger $audit): JsonResponse
     {
         $validated = $request->validate([
@@ -64,6 +67,7 @@ class RoleController
         return response()->json(['role' => $role->fresh()->load('permissions')]);
     }
 
+    /** Delete role action -> removes a non-protected role and related pivots, preserving an audit trail. */
     public function destroy(Request $request, Role $role, AuditLogger $audit): JsonResponse
     {
         abort_if($role->name === 'admin', 422, 'The administrator role cannot be deleted.');

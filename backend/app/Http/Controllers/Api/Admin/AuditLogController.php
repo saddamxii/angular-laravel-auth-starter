@@ -11,6 +11,7 @@ use Illuminate\Validation\Rule;
 
 class AuditLogController
 {
+    /** Admin audit table -> filters/paginates audit_logs with actor users -> returns page data for AdminComponent. */
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -36,6 +37,7 @@ class AuditLogController
         return response()->json($logs);
     }
 
+    /** Audit filter comboboxes -> distinct audit event values plus eligible users -> autocomplete options in AdminComponent. */
     public function options(): JsonResponse
     {
         return response()->json([

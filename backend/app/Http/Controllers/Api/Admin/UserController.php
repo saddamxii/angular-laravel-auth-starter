@@ -12,6 +12,7 @@ use Illuminate\Validation\Rule;
 
 class UserController
 {
+    /** Admin Users table -> paginates users with roles/permissions; query filters feed AdminComponent search and table state. */
     public function index(Request $request): JsonResponse
     {
         $users = User::query()
@@ -29,6 +30,7 @@ class UserController
         return response()->json($users);
     }
 
+    /** Add user dialog -> inserts users + role_user -> audit_logs -> AdminComponent reloads its users table. */
     public function store(Request $request, AuditLogger $audit): JsonResponse
     {
         $validated = $request->validate([
@@ -57,11 +59,13 @@ class UserController
         return response()->json(['user' => $user->load('roles.permissions')], 201);
     }
 
+    /** Admin user detail request -> returns one users row with roles/permissions after route/middleware authorization. */
     public function show(User $user): JsonResponse
     {
         return response()->json(['user' => $user->load('roles.permissions')]);
     }
 
+    /** Edit user dialog -> updates users and role_user assignments -> audit_logs -> refreshed admin table. */
     public function update(Request $request, User $user, AuditLogger $audit): JsonResponse
     {
         $validated = $request->validate([
@@ -104,6 +108,7 @@ class UserController
         return response()->json(['user' => $user->fresh()->load('roles.permissions')]);
     }
 
+    /** Delete user action -> prevents unsafe deletion rules, removes users row/relations and writes an audit_logs event. */
     public function destroy(Request $request, User $user, AuditLogger $audit): JsonResponse
     {
         abort_if($user->id === $request->user()->id, 422, 'You cannot delete your own account.');
