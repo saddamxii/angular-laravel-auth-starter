@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 
 class SessionController
 {
+    /** My profile page -> auth_sessions where user_id=current user -> active devices returned to ProfileComponent. */
     public function index(Request $request): JsonResponse
     {
         return response()->json([
@@ -19,6 +20,7 @@ class SessionController
         ]);
     }
 
+    /** Revoke one device -> verifies auth_sessions.user_id -> records revoked_at -> ProfileComponent reloads the list. */
     public function revoke(Request $request, AuthSession $session): JsonResponse
     {
         abort_unless($session->user_id === $request->user()->id, 404);
@@ -27,6 +29,7 @@ class SessionController
         return response()->json(['message' => 'Session revoked.']);
     }
 
+    /** Sign out all devices -> AuthSessionManager revokes every active auth_sessions row for the current user. */
     public function revokeAll(Request $request): JsonResponse
     {
         AuthSession::where('user_id', $request->user()->id)

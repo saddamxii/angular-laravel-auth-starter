@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 
 class PermissionController
 {
+    /** Add permission dialog -> validates stable permission code -> inserts permissions row -> audit_logs -> roles page reload. */
     public function store(Request $request, AuditLogger $audit): JsonResponse
     {
         $validated = $request->validate([

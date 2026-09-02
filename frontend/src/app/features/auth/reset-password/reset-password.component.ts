@@ -27,6 +27,7 @@ export class ResetPasswordComponent {
   readonly message = signal<string | null>(null);
   readonly form = this.fb.nonNullable.group({ password: ['', [Validators.required, Validators.minLength(12)]], password_confirmation: ['', [Validators.required]] });
 
+  /** Reset form/token from URL -> AuthService.resetPassword -> users.password -> redirects the user to /login. */
   submit(): void {
     const token = this.route.snapshot.queryParamMap.get('token');
     const email = this.route.snapshot.queryParamMap.get('email');

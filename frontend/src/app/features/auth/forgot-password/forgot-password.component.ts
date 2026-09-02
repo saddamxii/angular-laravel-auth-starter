@@ -25,6 +25,7 @@ export class ForgotPasswordComponent {
   readonly message = signal<string | null>(null);
   readonly form = this.fb.nonNullable.group({ email: ['', [Validators.required, Validators.email]] });
 
+  /** Forgot-password form -> password_reset_tokens + reset email via Laravel -> local confirmation message. */
   submit(): void {
     if (this.form.invalid) return;
     this.loading.set(true);

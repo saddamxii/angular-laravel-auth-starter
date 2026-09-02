@@ -44,6 +44,7 @@ export class LoginComponent {
     password: ['', [Validators.required]],
   });
 
+  /** Login form -> AuthService.login -> Laravel users/auth_sessions -> AuthService signals -> /dashboard. */
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -63,6 +64,7 @@ export class LoginComponent {
     });
   }
 
+  /** Passkey button -> CSRF bootstrap + browser WebAuthn -> Laravel passkeys login -> restoreSession -> /dashboard. */
   async passkeyLogin(): Promise<void> {
     this.errorMessage.set(null);
     this.loading.set(true);

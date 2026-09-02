@@ -38,6 +38,7 @@ export class RegisterComponent {
     terms_accepted: [false, Validators.requiredTrue],
   });
 
+  /** Register form -> AuthService.register -> users/role_user + verification email -> local success state. */
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();

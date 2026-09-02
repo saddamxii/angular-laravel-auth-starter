@@ -7,12 +7,6 @@
     @if (error()) { <p class="notice error" role="alert"><mat-icon>error_outline</mat-icon>{{ error() }}</p> }
 
     <div class="settings-grid" [class.account-settings-grid]="activeSection() === 'account'">
-      @if (activeSection() === 'sessions') { <mat-card appearance="outlined" class="setting-card danger-card"><mat-card-content>
-        <div class="credential-heading"><span class="credential-icon coral"><mat-icon>privacy_tip</mat-icon></span><div><p class="card-kicker">Privacy</p><h2>Your data</h2><p>Download your personal data or permanently delete your account.</p></div></div>
-        <div class="data-actions"><button mat-stroked-button type="button" (click)="downloadExport()" [disabled]="loading()"><mat-icon>download</mat-icon>Export my data</button><button mat-stroked-button type="button" class="delete-account" (click)="deleteAccount()" [disabled]="loading()"><mat-icon>delete_forever</mat-icon>Delete account</button></div>
-        <p class="form-note"><mat-icon>warning_amber</mat-icon>Deleting your account is permanent and requires your current password.</p>
-      </mat-card-content></mat-card> }
-
       @if (activeSection() === 'account') { <mat-card appearance="outlined" class="setting-card password-card credential-card"><mat-card-content>
         <div class="credential-heading"><span class="credential-icon violet"><mat-icon>key</mat-icon></span><div><p class="card-kicker">Security</p><h2>{{ i18n.t('security.change_password') }}</h2><p>Create a strong, unique password. Other signed-in devices will be disconnected.</p></div></div>
         <form class="credential-form" [formGroup]="passwordForm" (ngSubmit)="changePassword()" novalidate>
@@ -40,11 +34,6 @@
         <div class="items">@for (passkey of passkeys(); track passkey.id) { <article class="item"><span class="item-icon"><mat-icon>vpn_key</mat-icon></span><div><strong>{{ passkey.name }}</strong><small>{{ passkey.authenticator || 'Security authenticator' }}</small></div><button mat-stroked-button type="button" (click)="revokePasskey(passkey)" [disabled]="loading()">Remove</button></article> } @empty { <div class="empty-state"><mat-icon>fingerprint</mat-icon><p>No passkeys added yet.</p><small>Add one to sign in faster and more securely.</small></div> }</div>
       </mat-card-content></mat-card> }
 
-      @if (activeSection() === 'sessions') { <mat-card appearance="outlined" class="setting-card sessions-card"><mat-card-content>
-        <div class="credential-heading"><span class="credential-icon ocean"><mat-icon>devices</mat-icon></span><div><p class="card-kicker">Access control</p><h2>{{ i18n.t('security.sessions') }}</h2><p>Review the devices currently signed in to your account.</p></div></div>
-        <button mat-stroked-button type="button" class="revoke-all" (click)="revokeAllSessions()" [disabled]="loading() || !sessions().length"><mat-icon>logout</mat-icon>{{ i18n.t('security.sign_out_all') }}</button>
-        <div class="items">@for (session of sessions(); track session.id) { <article class="item"><span class="item-icon sessions"><mat-icon>desktop_windows</mat-icon></span><div><strong>{{ session.device_name || 'Unknown device' }}</strong><small>{{ session.ip_address || 'Unknown IP' }} · {{ session.last_used_at || session.created_at }}</small></div><button mat-stroked-button type="button" (click)="revokeSession(session)" [disabled]="loading()">Revoke</button></article> } @empty { <div class="empty-state"><mat-icon>devices</mat-icon><p>No active sessions found.</p></div> }</div>
-      </mat-card-content></mat-card> }
     </div>
   </section>
 </main>

@@ -10,6 +10,7 @@ use Laravel\Passkeys\Passkey;
 
 class PasskeyController
 {
+    /** Settings/Passkeys -> reads passkeys where user_id=current user -> returns safe credential metadata, never private key material. */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -29,6 +30,7 @@ class PasskeyController
         ]);
     }
 
+    /** Passkeys remove button -> verifies passkey ownership -> deletes only that passkeys row. */
     public function destroy(Request $request, Passkey $passkey): JsonResponse
     {
         abort_unless((int) $passkey->user_id === (int) $request->user()->id, 404);

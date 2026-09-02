@@ -22,6 +22,7 @@ use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 
 class AuthController
 {
+    /** Register form -> users + role_user transaction -> email verification notification -> frontend Register confirmation. */
     public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -47,6 +48,7 @@ class AuthController
         return response()->json(['message' => 'Registration successful. Please verify your email address.'], 201);
     }
 
+    /** Login form -> users email/username lookup -> auth_sessions row + JWT/refresh cookie -> Angular AuthService -> dashboard. */
     public function login(Request $request, AuthSessionManager $sessions): JsonResponse
     {
         $credentials = $request->validate([
@@ -83,6 +85,7 @@ class AuthController
         return $this->tokenResponse($user, $token, $refreshToken);
     }
 
+    /** Refresh-cookie request -> validates auth_sessions and auth_version -> rotates session/token -> Angular interceptor retries its original API call. */
     public function refresh(Request $request, AuthSessionManager $sessions): JsonResponse
     {
         $refreshToken = $request->cookie('refresh_token');
@@ -108,6 +111,7 @@ class AuthController
         }
     }
 
+    /** Forgot-password form -> Laravel password reset token store + LocalizedResetPassword mail -> reset-password page. */
     public function forgotPassword(Request $request): JsonResponse
     {
         $validated = $request->validate(['email' => ['required', 'email']]);
@@ -115,6 +119,7 @@ class AuthController
         return response()->json(['message' => 'If the email exists, a password reset link has been sent.']);
     }
 
+    /** Reset form -> validates broker token -> updates users.password -> user returns to login with the new credential. */
     public function resetPassword(Request $request): JsonResponse
     {
         $validated = $request->validate(['token' => ['required', 'string'], 'email' => ['required', 'email'], 'password' => ['required', 'string', 'min:12', 'max:128', 'regex:/[A-Z]/', 'regex:/[a-z]/', 'regex:/[0-9]/', 'regex:/[^A-Za-z0-9]/', 'confirmed']]);
@@ -129,6 +134,7 @@ class AuthController
         return response()->json(['message' => 'Password reset successfully.']);
     }
 
+    /** Email link landing route -> preserves token/email and forwards the browser to Angular /reset-password. */
     public function passwordResetPage(string $token): mixed
     {
         $email = request()->query('email');
@@ -136,6 +142,7 @@ class AuthController
         return redirect()->to('/reset-password?token='.urlencode($token).'&email='.urlencode($email));
     }
 
+    /** Signed verification email -> marks users.email_verified_at -> redirects to frontend login?verified=1. */
     public function verifyEmail(Request $request, int $id, string $hash): mixed
     {
         $user = User::findOrFail($id);
@@ -144,6 +151,7 @@ class AuthController
         return redirect()->to(rtrim((string) config('app.frontend_url'), '/').'/login?verified=1');
     }
 
+    /** Resend request -> users lookup without account enumeration -> notification if the existing user still needs verification. */
     public function resendVerification(Request $request): JsonResponse
     {
         $validated = $request->validate(['email' => ['required', 'email']]);
@@ -152,6 +160,7 @@ class AuthController
         return response()->json(['message' => 'If the account exists and requires verification, a verification email has been sent.']);
     }
 
+    /** Account password form -> verifies users.password -> bumps auth_version/revokes auth_sessions -> creates one fresh session and audit_logs event. */
     public function changePassword(Request $request, AuthSessionManager $sessions, AuditLogger $audit): JsonResponse
     {
         $validated = $request->validate([
@@ -187,6 +196,7 @@ class AuthController
         return $this->tokenResponse($user, $accessToken, $refreshToken);
     }
 
+    /** Account email form -> stores pending_email/token on users -> notifies old and new addresses -> signed link reaches verifyPendingEmailChange. */
     public function requestEmailChange(Request $request, AuditLogger $audit): JsonResponse
     {
         $validated = $request->validate([
@@ -227,6 +237,7 @@ class AuthController
         return response()->json(['message' => 'Verification instructions have been sent to your new email address.']);
     }
 
+    /** Topbar language selector -> persists users.locale -> response updates Angular currentUser and TranslationService. */
     public function updateLocale(Request $request): JsonResponse
     {
         $validated = $request->validate(['locale' => ['required', 'in:en,fr,es']]);
@@ -237,6 +248,7 @@ class AuthController
         return response()->json(['user' => $user->fresh()->load('roles.permissions')]);
     }
 
+    /** Signed new-email link -> validates pending token -> promotes pending_email to users.email, revokes sessions and redirects to login. */
     public function verifyPendingEmailChange(Request $request, User $user, string $token, AuthSessionManager $sessions, AuditLogger $audit): mixed
     {
         $tokenMatches = $user->pending_email_change_token !== null
@@ -261,6 +273,7 @@ class AuthController
         return redirect()->to(rtrim((string) config('app.frontend_url'), '/').'/login?email_changed=1');
     }
 
+    /** Sidebar/logout or expiry -> revokes refresh token's auth_sessions row, logs out guards and clears the browser refresh cookie. */
     public function logout(Request $request, AuthSessionManager $sessions): JsonResponse
     {
         $refreshToken = $request->cookie('refresh_token');
@@ -270,11 +283,13 @@ class AuthController
         return response()->json(['message' => 'Logged out successfully.'])->withCookie(cookie()->forget('refresh_token'));
     }
 
+    /** AuthService.restoreSession -> loads the authenticated users row with roles and permissions for Angular guards/UI. */
     public function me(Request $request): JsonResponse
     {
         return response()->json(['user' => $request->user()->load('roles.permissions')]);
     }
 
+    /** Shared login/refresh response: returns short-lived JWT and puts the long-lived refresh JWT in an HttpOnly cookie. */
     private function tokenResponse(User $user, string $accessToken, string $refreshToken, bool $includeUser = true): JsonResponse
     {
         return response()->json(array_filter([
